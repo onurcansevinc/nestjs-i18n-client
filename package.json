@@ -5,6 +5,13 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/onurcansevinc/i18n-module.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "files": [
     "dist/**/*"
   ],
