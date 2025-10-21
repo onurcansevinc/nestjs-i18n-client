@@ -1,9 +1,10 @@
-# @magicianofmeta/nestjs-i18n-client
+# nestjs-i18n-client
 
-A NestJS module that extends `nestjs-i18n` with dynamic translation loading from external APIs. This package provides automatic translation caching, scheduled updates, and robust error handling with retry mechanisms.
+A NestJS module built on top of `nestjs-i18n` that adds dynamic translation loading from external APIs. This package extends the powerful `nestjs-i18n` library with automatic translation caching, scheduled updates, and robust error handling with retry mechanisms.
 
 ## Features
 
+- 🏗️ **Built on nestjs-i18n**: Extends the popular `nestjs-i18n` library with additional capabilities
 - 🔄 **Dynamic Translation Loading**: Fetch translations from external APIs
 - ⏰ **Scheduled Updates**: Automatic refresh every 3 hours using `nestjs-schedule`
 - 🔐 **Bearer Token Authentication**: Secure API communication
@@ -15,7 +16,7 @@ A NestJS module that extends `nestjs-i18n` with dynamic translation loading from
 ## Installation
 
 ```bash
-npm install @magician-of-meta/nestjs-i18n-client
+npm install nestjs-i18n-client
 ```
 
 ## Peer Dependencies
@@ -50,7 +51,7 @@ npm install @nestjs/common @nestjs/core @nestjs/schedule nestjs-i18n rxjs reflec
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { I18nClientModule } from '@magician-of-meta/nestjs-i18n-client';
+import { I18nClientModule } from 'nestjs-i18n-client';
 
 @Module({
   imports: [
@@ -73,8 +74,8 @@ export class AppModule {}
 
 ```typescript
 import { Module } from '@nestjs/common';
+import { I18nClientModule } from 'nestjs-i18n-client';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { I18nClientModule } from '@magician-of-meta/nestjs-i18n-client';
 
 @Module({
   imports: [
@@ -96,23 +97,19 @@ export class AppModule {}
 ### 3. Using the Service
 
 ```typescript
+import { I18nService } from 'nestjs-i18n';
 import { Injectable } from '@nestjs/common';
-import { I18nClientService } from '@magicianofmeta/nestjs-i18n-client';
 
 @Injectable()
 export class MyService {
-  constructor(private readonly i18nClient: I18nClientService) {}
+  constructor(private readonly i18nClient: I18nService) {}
 
   async getMessage() {
     // Manual refresh
     await this.i18nClient.manualRefresh();
 
     // Get translation
-    const message = await this.i18nClient.getTranslation(
-      'welcome.message',
-      'en'
-    );
-
+    const message = this.i18nService.t('validation.is_required');
     return message;
   }
 }
