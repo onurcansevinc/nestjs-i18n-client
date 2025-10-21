@@ -72,14 +72,14 @@ export class I18nClientModule {
             const clientOptions = await options.useFactory(...args);
             return {
               fallbackLanguage: clientOptions.defaultLanguage || 'en',
-              loader: I18nHttpLoader,
               loaderOptions: clientOptions,
-              resolvers: [
-                new HeaderResolver(['x-custom-lang']),
-                AcceptLanguageResolver,
-              ],
             };
           },
+          loader: I18nHttpLoader,
+          resolvers: [
+            new HeaderResolver(['x-custom-lang']),
+            AcceptLanguageResolver,
+          ],
           inject: options.inject || [],
         }),
       ],

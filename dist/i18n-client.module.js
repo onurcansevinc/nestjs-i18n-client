@@ -69,14 +69,14 @@ let I18nClientModule = I18nClientModule_1 = class I18nClientModule {
                         const clientOptions = await options.useFactory(...args);
                         return {
                             fallbackLanguage: clientOptions.defaultLanguage || 'en',
-                            loader: i18n_http_loader_1.I18nHttpLoader,
                             loaderOptions: clientOptions,
-                            resolvers: [
-                                new nestjs_i18n_1.HeaderResolver(['x-custom-lang']),
-                                nestjs_i18n_1.AcceptLanguageResolver,
-                            ],
                         };
                     },
+                    loader: i18n_http_loader_1.I18nHttpLoader,
+                    resolvers: [
+                        new nestjs_i18n_1.HeaderResolver(['x-custom-lang']),
+                        nestjs_i18n_1.AcceptLanguageResolver,
+                    ],
                     inject: options.inject || [],
                 }),
             ],
