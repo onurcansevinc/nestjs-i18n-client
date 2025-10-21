@@ -74,13 +74,13 @@ export class I18nClientModule {
               fallbackLanguage: clientOptions.defaultLanguage || 'en',
               loader: I18nHttpLoader,
               loaderOptions: clientOptions,
+              resolvers: [
+                new HeaderResolver(['x-custom-lang']),
+                AcceptLanguageResolver,
+              ],
             };
           },
           inject: options.inject || [],
-          resolvers: [
-            new HeaderResolver(['x-custom-lang']),
-            AcceptLanguageResolver,
-          ],
         }),
       ],
       providers,
