@@ -79,7 +79,9 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
     async languages() {
         try {
             const res = await this.getHttpClient().get('/translations');
-            return res.data?.languages || [this.options.defaultLanguage || 'en'];
+            if (!res.data.success)
+                return [this.options.defaultLanguage || 'en'];
+            return res.data.data.languages || [this.options.defaultLanguage || 'en'];
         }
         catch (error) {
             const msg = this.getErrorMessage(error);
@@ -112,7 +114,9 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
     async fetchLanguageTranslations(language) {
         try {
             const res = await this.getHttpClient().get(`/translations/${language}`);
-            return res.data?.translations || res.data || {};
+            if (!res.data.success)
+                return {};
+            return res.data.data || {};
         }
         catch (error) {
             const msg = this.getErrorMessage(error);
@@ -130,7 +134,9 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
                 ? `/translations/${language}/${namespace}`
                 : `/translations/${language}`;
             const res = await this.getHttpClient().get(url);
-            const data = res.data?.translations || res.data || {};
+            if (!res.data.success)
+                return {};
+            const data = res.data.data || {};
             this.logger.log(`Loaded translations for: ${key}`);
             return data;
         }

@@ -85,7 +85,8 @@ export class I18nHttpLoader extends I18nLoader {
   async languages(): Promise<string[]> {
     try {
       const res = await this.getHttpClient().get('/translations');
-      return res.data?.languages || [this.options.defaultLanguage || 'en'];
+      if (!res.data.success) return [this.options.defaultLanguage || 'en'];
+      return res.data.data.languages || [this.options.defaultLanguage || 'en'];
     } catch (error) {
       const msg = this.getErrorMessage(error);
       this.logger.warn(`Failed to fetch languages (${msg}), using fallback.`);
@@ -130,7 +131,8 @@ export class I18nHttpLoader extends I18nLoader {
   ): Promise<Record<string, any>> {
     try {
       const res = await this.getHttpClient().get(`/translations/${language}`);
-      return res.data?.translations || res.data || {};
+      if (!res.data.success) return {};
+      return res.data.data || {};
     } catch (error) {
       const msg = this.getErrorMessage(error);
       this.logger.warn(`Failed to load '${language}' (${msg})`);
@@ -153,7 +155,8 @@ export class I18nHttpLoader extends I18nLoader {
         : `/translations/${language}`;
 
       const res = await this.getHttpClient().get(url);
-      const data = res.data?.translations || res.data || {};
+      if (!res.data.success) return {};
+      const data = res.data.data || {};
 
       this.logger.log(`Loaded translations for: ${key}`);
 
