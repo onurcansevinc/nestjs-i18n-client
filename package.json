@@ -7,7 +7,7 @@
   "type": "commonjs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/onurcansevinc/nestjs-i18n-client.git"
+    "url": "git+https://github.com/onurcansevinc/nestjs-i18n-client.git"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
