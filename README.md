@@ -132,6 +132,26 @@ GET /health
 }
 ```
 
+### Get All Languages
+
+```
+GET /translations/language
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "timestamp": "2025-10-22T06:31:14.664Z",
+  "message": "Languages fetched successfully",
+  "data": {
+    "languages": ["tr", "en", "de"],
+    "totalLanguages": 3
+  }
+}
+```
+
 ### Get All Translations
 
 ```
@@ -142,30 +162,38 @@ GET /translations
 
 ```json
 {
-  "languages": ["en", "tr", "fr"]
+  "success": true,
+  "timestamp": "2025-10-22T06:31:46.058Z",
+  "data": {
+    "EN": {
+      "validation.is_required": "This field is required"
+    },
+    "TR": {
+      "validation.is_required": "Bu alan zorunludur"
+    }
+  }
 }
 ```
 
 ### Get Language Translations
 
 ```
-GET /translations/:language
+GET /translations/:language/
 ```
 
 **Response:**
 
 ```json
 {
-  "language": "en",
-  "namespaces": ["common", "auth", "errors"],
-  "translations": {
-    "welcome": "Welcome",
-    "hello": "Hello"
+  "success": true,
+  "timestamp": "2025-10-22T06:32:52.116Z",
+  "data": {
+    "validation.is_required": "This field is required"
   }
 }
 ```
 
-### Get Namespace Translations
+### Get Translations by Language and Namespace
 
 ```
 GET /translations/:language/:namespace
@@ -175,13 +203,18 @@ GET /translations/:language/:namespace
 
 ```json
 {
-  "language": "en",
-  "namespace": "common",
-  "translations": {
-    "welcome": "Welcome",
-    "hello": "Hello"
-  },
-  "lastModified": "2024-01-01T00:00:00Z"
+  "success": true,
+  "timestamp": "2025-10-22T06:33:48.300Z",
+  "data": {
+    "validation.must_be_a_number": "This field must be a number",
+    "validation.must_be_a_string": "This field must be a string",
+    "validation.must_be_positive": "This field must be positive",
+    "validation.must_be_a_valid_email": "This field must be a valid email",
+    "validation.must_be_a_valid_phone_number": "This field must be a valid phone number",
+    "validation.must_be_at_least_min_characters": "This field must be at least {min} characters",
+    "validation.must_be_at_most_max_characters": "This field must be at most {max} characters",
+    "validation.is_required": "This field is required"
+  }
 }
 ```
 
