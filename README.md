@@ -105,9 +105,6 @@ export class MyService {
   constructor(private readonly i18nClient: I18nService) {}
 
   async getMessage() {
-    // Manual refresh
-    await this.i18nClient.manualRefresh();
-
     // Get translation
     const message = this.i18nService.t('validation.is_required');
     return message;
