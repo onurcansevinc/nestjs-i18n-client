@@ -128,7 +128,7 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
      */
     async getAvailableLanguages() {
         try {
-            const response = await this.loader['getHttpClient']().get('/translations');
+            const response = await this.loader['getHttpClient']().get('/translations/language');
             return response.data?.languages || ['en']; // Default to English if no languages found
         }
         catch (error) {

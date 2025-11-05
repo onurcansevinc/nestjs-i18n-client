@@ -78,7 +78,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
      */
     async languages() {
         try {
-            const res = await this.getHttpClient().get('/translations');
+            const res = await this.getHttpClient().get('/translations/language');
             if (!res.data.success)
                 return [this.options.defaultLanguage || 'en'];
             return res.data.data.languages || [this.options.defaultLanguage || 'en'];

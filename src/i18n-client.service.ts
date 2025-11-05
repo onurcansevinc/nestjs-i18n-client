@@ -144,7 +144,7 @@ export class I18nClientService {
   private async getAvailableLanguages(): Promise<string[]> {
     try {
       const response = await this.loader['getHttpClient']().get(
-        '/translations'
+        '/translations/language'
       );
       return response.data?.languages || ['en']; // Default to English if no languages found
     } catch (error) {

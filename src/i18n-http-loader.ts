@@ -84,7 +84,7 @@ export class I18nHttpLoader extends I18nLoader {
    */
   async languages(): Promise<string[]> {
     try {
-      const res = await this.getHttpClient().get('/translations');
+      const res = await this.getHttpClient().get('/translations/language');
       if (!res.data.success) return [this.options.defaultLanguage || 'en'];
       return res.data.data.languages || [this.options.defaultLanguage || 'en'];
     } catch (error) {
