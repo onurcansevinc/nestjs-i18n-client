@@ -1,5 +1,5 @@
-import axios, { AxiosInstance } from 'axios';
 import { Inject, Logger } from '@nestjs/common';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 import { I18nLoader, I18N_LOADER_OPTIONS, I18nTranslation } from 'nestjs-i18n';
 import {
   I18nClientModuleOptions,
@@ -22,7 +22,7 @@ export class I18nHttpLoader extends I18nLoader {
   ) {
     super();
 
-    if (!options?.apiUrl || !options?.bearerToken) {
+    if (!options?.apiUrl || !options?.apiKey) {
       this.logger.warn(
         'I18nHttpLoader: No valid options provided. HTTP client will not initialize.'
       );
@@ -41,15 +41,15 @@ export class I18nHttpLoader extends I18nLoader {
    */
   private getHttpClient(): AxiosInstance {
     if (!this.httpClient) {
-      if (!this.options?.apiUrl || !this.options?.bearerToken) {
-        throw new Error('I18nHttpLoader: Missing apiUrl or bearerToken.');
+      if (!this.options?.apiUrl || !this.options?.apiKey) {
+        throw new Error('I18nHttpLoader: Missing apiUrl or apiKey.');
       }
 
       this.httpClient = axios.create({
         baseURL: this.options.apiUrl,
         timeout: 30000,
         headers: {
-          Authorization: `Bearer ${this.options.bearerToken}`,
+          'x-api-key': this.options.apiKey,
           'Content-Type': 'application/json',
         },
       });
@@ -73,6 +73,97 @@ export class I18nHttpLoader extends I18nLoader {
   }
 
   /**
+   * Check if an error should be retried
+   */
+  private shouldRetry(error: AxiosError, attempt: number): boolean {
+    // Don't retry if max retries exceeded
+    if (attempt >= this.retryConfig.maxRetries) {
+      return false;
+    }
+
+    // Retry on network errors (no response received)
+    if (!error.response) {
+      return true;
+    }
+
+    // Retry on 5xx server errors
+    const status = error.response.status;
+    if (status >= 500 && status < 600) {
+      return true;
+    }
+
+    // Retry on 429 Too Many Requests
+    if (status === 429) {
+      return true;
+    }
+
+    // Don't retry on 4xx client errors (except 429)
+    return false;
+  }
+
+  /**
+   * Calculate delay for exponential backoff
+   */
+  private calculateDelay(attempt: number): number {
+    const delay =
+      this.retryConfig.baseDelay *
+      Math.pow(this.retryConfig.backoffMultiplier, attempt);
+    return Math.min(delay, this.retryConfig.maxDelay);
+  }
+
+  /**
+   * Sleep utility for delays
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Execute HTTP request with retry logic and exponential backoff
+   */
+  private async executeWithRetry<T>(
+    requestFn: () => Promise<T>,
+    url: string,
+    method: string = 'GET'
+  ): Promise<T> {
+    let lastError: AxiosError | Error | null = null;
+
+    for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
+      try {
+        return await requestFn();
+      } catch (error) {
+        lastError = error as AxiosError | Error;
+        const axiosError = error as AxiosError;
+
+        // Check if we should retry
+        if (!this.shouldRetry(axiosError, attempt)) {
+          this.logger.debug(
+            `Not retrying [${method} ${url}] - attempt ${attempt + 1}/${
+              this.retryConfig.maxRetries + 1
+            }`
+          );
+          throw error;
+        }
+
+        // Calculate delay for next retry
+        const delay = this.calculateDelay(attempt);
+
+        this.logger.warn(
+          `Request failed [${method} ${url}] - attempt ${attempt + 1}/${
+            this.retryConfig.maxRetries + 1
+          }, retrying in ${delay}ms...`
+        );
+
+        // Wait before retrying
+        await this.sleep(delay);
+      }
+    }
+
+    // If we get here, all retries failed
+    throw lastError || new Error('Request failed after all retries');
+  }
+
+  /**
    * Manually reset the axios client (e.g., when config changes)
    */
   refreshHttpClient(): void {
@@ -84,7 +175,11 @@ export class I18nHttpLoader extends I18nLoader {
    */
   async languages(): Promise<string[]> {
     try {
-      const res = await this.getHttpClient().get('/translations/language');
+      const res = await this.executeWithRetry(
+        () => this.getHttpClient().get('/translations/language'),
+        '/translations/language',
+        'GET'
+      );
       if (!res.data.success) return [this.options.defaultLanguage || 'en'];
       return res.data.data.languages || [this.options.defaultLanguage || 'en'];
     } catch (error) {
@@ -130,7 +225,11 @@ export class I18nHttpLoader extends I18nLoader {
     language: string
   ): Promise<Record<string, any>> {
     try {
-      const res = await this.getHttpClient().get(`/translations/${language}`);
+      const res = await this.executeWithRetry(
+        () => this.getHttpClient().get(`/translations/${language}`),
+        `/translations/${language}`,
+        'GET'
+      );
       if (!res.data.success) return {};
       return res.data.data || {};
     } catch (error) {
@@ -154,7 +253,11 @@ export class I18nHttpLoader extends I18nLoader {
         ? `/translations/${language}/${namespace}`
         : `/translations/${language}`;
 
-      const res = await this.getHttpClient().get(url);
+      const res = await this.executeWithRetry(
+        () => this.getHttpClient().get(url),
+        url,
+        'GET'
+      );
       if (!res.data.success) return {};
       const data = res.data.data || {};
 
@@ -178,7 +281,12 @@ export class I18nHttpLoader extends I18nLoader {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const res = await this.getHttpClient().get('/health');
+      const res = await this.executeWithRetry(
+        () => this.getHttpClient().get('/health'),
+        '/health',
+        'GET'
+      );
+
       return res.status >= 200 && res.status < 300;
     } catch (error) {
       const msg = this.getErrorMessage(error);

@@ -17,8 +17,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 var I18nHttpLoader_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.I18nHttpLoader = void 0;
-const axios_1 = __importDefault(require("axios"));
 const common_1 = require("@nestjs/common");
+const axios_1 = __importDefault(require("axios"));
 const nestjs_i18n_1 = require("nestjs-i18n");
 const interfaces_1 = require("./interfaces");
 /**
@@ -32,7 +32,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
     constructor(options) {
         super();
         this.options = options;
-        if (!options?.apiUrl || !options?.bearerToken) {
+        if (!options?.apiUrl || !options?.apiKey) {
             this.logger.warn('I18nHttpLoader: No valid options provided. HTTP client will not initialize.');
         }
         this.retryConfig = {
@@ -47,14 +47,14 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
      */
     getHttpClient() {
         if (!this.httpClient) {
-            if (!this.options?.apiUrl || !this.options?.bearerToken) {
-                throw new Error('I18nHttpLoader: Missing apiUrl or bearerToken.');
+            if (!this.options?.apiUrl || !this.options?.apiKey) {
+                throw new Error('I18nHttpLoader: Missing apiUrl or apiKey.');
             }
             this.httpClient = axios_1.default.create({
                 baseURL: this.options.apiUrl,
                 timeout: 30000,
                 headers: {
-                    Authorization: `Bearer ${this.options.bearerToken}`,
+                    'x-api-key': this.options.apiKey,
                     'Content-Type': 'application/json',
                 },
             });
@@ -68,6 +68,71 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
         return this.httpClient;
     }
     /**
+     * Check if an error should be retried
+     */
+    shouldRetry(error, attempt) {
+        // Don't retry if max retries exceeded
+        if (attempt >= this.retryConfig.maxRetries) {
+            return false;
+        }
+        // Retry on network errors (no response received)
+        if (!error.response) {
+            return true;
+        }
+        // Retry on 5xx server errors
+        const status = error.response.status;
+        if (status >= 500 && status < 600) {
+            return true;
+        }
+        // Retry on 429 Too Many Requests
+        if (status === 429) {
+            return true;
+        }
+        // Don't retry on 4xx client errors (except 429)
+        return false;
+    }
+    /**
+     * Calculate delay for exponential backoff
+     */
+    calculateDelay(attempt) {
+        const delay = this.retryConfig.baseDelay *
+            Math.pow(this.retryConfig.backoffMultiplier, attempt);
+        return Math.min(delay, this.retryConfig.maxDelay);
+    }
+    /**
+     * Sleep utility for delays
+     */
+    sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    /**
+     * Execute HTTP request with retry logic and exponential backoff
+     */
+    async executeWithRetry(requestFn, url, method = 'GET') {
+        let lastError = null;
+        for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
+            try {
+                return await requestFn();
+            }
+            catch (error) {
+                lastError = error;
+                const axiosError = error;
+                // Check if we should retry
+                if (!this.shouldRetry(axiosError, attempt)) {
+                    this.logger.debug(`Not retrying [${method} ${url}] - attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}`);
+                    throw error;
+                }
+                // Calculate delay for next retry
+                const delay = this.calculateDelay(attempt);
+                this.logger.warn(`Request failed [${method} ${url}] - attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}, retrying in ${delay}ms...`);
+                // Wait before retrying
+                await this.sleep(delay);
+            }
+        }
+        // If we get here, all retries failed
+        throw lastError || new Error('Request failed after all retries');
+    }
+    /**
      * Manually reset the axios client (e.g., when config changes)
      */
     refreshHttpClient() {
@@ -78,7 +143,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
      */
     async languages() {
         try {
-            const res = await this.getHttpClient().get('/translations/language');
+            const res = await this.executeWithRetry(() => this.getHttpClient().get('/translations/language'), '/translations/language', 'GET');
             if (!res.data.success)
                 return [this.options.defaultLanguage || 'en'];
             return res.data.data.languages || [this.options.defaultLanguage || 'en'];
@@ -113,7 +178,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
      */
     async fetchLanguageTranslations(language) {
         try {
-            const res = await this.getHttpClient().get(`/translations/${language}`);
+            const res = await this.executeWithRetry(() => this.getHttpClient().get(`/translations/${language}`), `/translations/${language}`, 'GET');
             if (!res.data.success)
                 return {};
             return res.data.data || {};
@@ -133,7 +198,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
             const url = namespace
                 ? `/translations/${language}/${namespace}`
                 : `/translations/${language}`;
-            const res = await this.getHttpClient().get(url);
+            const res = await this.executeWithRetry(() => this.getHttpClient().get(url), url, 'GET');
             if (!res.data.success)
                 return {};
             const data = res.data.data || {};
@@ -151,7 +216,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
      */
     async healthCheck() {
         try {
-            const res = await this.getHttpClient().get('/health');
+            const res = await this.executeWithRetry(() => this.getHttpClient().get('/health'), '/health', 'GET');
             return res.status >= 200 && res.status < 300;
         }
         catch (error) {

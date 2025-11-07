@@ -14,6 +14,22 @@ export declare class I18nHttpLoader extends I18nLoader {
      */
     private getHttpClient;
     /**
+     * Check if an error should be retried
+     */
+    private shouldRetry;
+    /**
+     * Calculate delay for exponential backoff
+     */
+    private calculateDelay;
+    /**
+     * Sleep utility for delays
+     */
+    private sleep;
+    /**
+     * Execute HTTP request with retry logic and exponential backoff
+     */
+    private executeWithRetry;
+    /**
      * Manually reset the axios client (e.g., when config changes)
      */
     refreshHttpClient(): void;

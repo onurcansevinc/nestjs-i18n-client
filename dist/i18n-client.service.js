@@ -57,6 +57,11 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
      * Manually trigger translation refresh
      */
     async manualRefresh() {
+        if (this.isRefreshing) {
+            this.logger.warn('Translation refresh already in progress, skipping...');
+            return;
+        }
+        this.isRefreshing = true;
         this.logger.log('Manual translation refresh triggered');
         try {
             await this.performRefresh();
@@ -65,6 +70,9 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
         catch (error) {
             this.logger.error('Manual translation refresh failed:', error);
             throw error;
+        }
+        finally {
+            this.isRefreshing = false;
         }
     }
     /**
@@ -132,8 +140,8 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
             return response.data?.languages || ['en']; // Default to English if no languages found
         }
         catch (error) {
-            this.logger.warn('Failed to get available languages, using default:', error);
-            return [this.options.defaultLanguage || 'en'];
+            this.logger.error('Failed to get available languages:', error);
+            throw error; // Re-throw error instead of returning fallback
         }
     }
     /**

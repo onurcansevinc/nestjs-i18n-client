@@ -7,7 +7,7 @@ A NestJS module built on top of `nestjs-i18n` that adds dynamic translation load
 - 🏗️ **Built on nestjs-i18n**: Extends the popular `nestjs-i18n` library with additional capabilities
 - 🔄 **Dynamic Translation Loading**: Fetch translations from external APIs
 - ⏰ **Scheduled Updates**: Automatic refresh every 3 hours using `nestjs-schedule`
-- 🔐 **Bearer Token Authentication**: Secure API communication
+- 🔐 **API Key Authentication**: Secure API communication
 - 🔁 **Retry & Backoff**: Robust error handling with exponential backoff
 - 🏥 **Health Checks**: API health monitoring
 - 📦 **TypeScript Support**: Full TypeScript definitions included
@@ -57,7 +57,7 @@ import { I18nClientModule } from 'nestjs-i18n-client';
   imports: [
     I18nClientModule.forRoot({
       apiUrl: 'https://your-api.com',
-      bearerToken: 'your-bearer-token',
+      apiKey: 'your-api-key',
       defaultLanguage: 'en',
     }),
   ],
@@ -84,7 +84,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         apiUrl: configService.get('I18N_API_URL'),
-        bearerToken: configService.get('I18N_BEARER_TOKEN'),
+        apiKey: configService.get('I18N_API_KEY'),
         defaultLanguage: configService.get('I18N_DEFAULT_LANGUAGE', 'en'),
       }),
       inject: [ConfigService],
@@ -223,7 +223,7 @@ GET /translations/:language/:namespace
 ```typescript
 interface I18nClientModuleOptions {
   apiUrl: string; // Base URL of the translation API
-  bearerToken: string; // Bearer token for authentication
+  apiKey: string; // API key for authentication
   defaultLanguage?: string; // Default language code (default: 'en')
   retryConfig?: RetryConfig; // Retry configuration
 }

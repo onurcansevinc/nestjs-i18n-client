@@ -10,9 +10,9 @@ export interface I18nClientModuleOptions {
   apiUrl: string;
 
   /**
-   * Bearer token for API authentication
+   * API key for authentication (sent as x-api-key header)
    */
-  bearerToken: string;
+  apiKey: string;
 
   /**
    * Default language code (optional)
