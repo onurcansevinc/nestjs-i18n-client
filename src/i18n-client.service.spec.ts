@@ -19,7 +19,6 @@ describe('I18nClientService', () => {
 
     mockLoader = {
       healthCheck: jest.fn(),
-      loadLanguageNamespace: jest.fn(),
       languages: jest.fn(),
     } as any;
 
@@ -60,14 +59,9 @@ describe('I18nClientService', () => {
         }),
       });
 
-      mockLoader.loadLanguageNamespace.mockResolvedValue({
-        key1: 'value1',
-      });
-
       await service.manualRefresh();
 
       expect(mockLoader.healthCheck).toHaveBeenCalled();
-      expect(mockLoader.loadLanguageNamespace).toHaveBeenCalled();
     });
 
     it('should throw error when API is unhealthy', async () => {
@@ -86,42 +80,6 @@ describe('I18nClientService', () => {
       });
 
       await expect(service.manualRefresh()).rejects.toThrow('Network error');
-    });
-  });
-
-  describe('getTranslation', () => {
-    it('should get translation successfully', async () => {
-      mockI18nService.translate.mockReturnValue('Translated text');
-
-      const result = await service.getTranslation('test.key');
-
-      expect(result).toBe('Translated text');
-      expect(mockI18nService.translate).toHaveBeenCalledWith('test.key', {
-        lang: 'en',
-        args: {},
-      });
-    });
-
-    it('should use custom language', async () => {
-      mockI18nService.translate.mockReturnValue('Çevrilmiş metin');
-
-      const result = await service.getTranslation('test.key', 'tr');
-
-      expect(result).toBe('Çevrilmiş metin');
-      expect(mockI18nService.translate).toHaveBeenCalledWith('test.key', {
-        lang: 'tr',
-        args: {},
-      });
-    });
-
-    it('should return key when translation fails', async () => {
-      mockI18nService.translate.mockImplementation(() => {
-        throw new Error('Translation not found');
-      });
-
-      const result = await service.getTranslation('test.key');
-
-      expect(result).toBe('test.key');
     });
   });
 
@@ -161,7 +119,6 @@ describe('I18nClientService', () => {
             })
         ),
       });
-      mockLoader.loadLanguageNamespace.mockResolvedValue({});
 
       const refreshPromise = service.manualRefresh();
 

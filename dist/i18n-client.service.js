@@ -17,9 +17,7 @@ exports.I18nClientService = void 0;
 const schedule_1 = require("@nestjs/schedule");
 const nestjs_i18n_1 = require("nestjs-i18n");
 const common_1 = require("@nestjs/common");
-/**
- * Service for managing i18n translations with external API integration
- */
+// Service for managing i18n translations with external API integration
 let I18nClientService = I18nClientService_1 = class I18nClientService {
     options;
     i18nService;
@@ -32,9 +30,7 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
         // Access the loader through I18nService's internal loader
         this.loader = this.i18nService.loader;
     }
-    /**
-     * Scheduled job to refresh translations every 3 hours
-     */
+    // Scheduled job to refresh translations every 3 hours
     async refreshTranslations() {
         if (this.isRefreshing) {
             this.logger.warn('Translation refresh already in progress, skipping...');
@@ -53,9 +49,7 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
             this.isRefreshing = false;
         }
     }
-    /**
-     * Manually trigger translation refresh
-     */
+    // Manually trigger translation refresh
     async manualRefresh() {
         if (this.isRefreshing) {
             this.logger.warn('Translation refresh already in progress, skipping...');
@@ -75,9 +69,7 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
             this.isRefreshing = false;
         }
     }
-    /**
-     * Perform the actual refresh operation
-     */
+    // Perform the actual refresh operation
     async performRefresh() {
         // Check API health first
         const isHealthy = await this.loader.healthCheck();
@@ -89,7 +81,7 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
         // Refresh translations for each language
         for (const language of languages) {
             try {
-                await this.refreshLanguageTranslations(language);
+                await this.loader.load();
                 this.logger.debug(`Refreshed translations for language: ${language}`);
             }
             catch (error) {
@@ -100,7 +92,7 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
         if (this.options.defaultLanguage &&
             !languages.includes(this.options.defaultLanguage)) {
             try {
-                await this.refreshLanguageTranslations(this.options.defaultLanguage);
+                await this.loader.load();
                 this.logger.debug(`Refreshed translations for default language: ${this.options.defaultLanguage}`);
             }
             catch (error) {
@@ -108,35 +100,12 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
             }
         }
     }
-    /**
-     * Refresh translations for a specific language
-     */
-    async refreshLanguageTranslations(language) {
-        try {
-            // Load general translations
-            const translations = await this.loader.loadLanguageNamespace(language);
-            // Try to load namespace-specific translations
-            const namespaces = await this.getAvailableNamespaces(language);
-            for (const namespace of namespaces) {
-                try {
-                    await this.loader.loadLanguageNamespace(language, namespace);
-                }
-                catch (error) {
-                    this.logger.warn(`Failed to load namespace ${namespace} for language ${language}:`, error);
-                }
-            }
-        }
-        catch (error) {
-            this.logger.error(`Failed to refresh translations for language ${language}:`, error);
-            throw error;
-        }
-    }
-    /**
-     * Get available languages from the API
-     */
+    // Get available languages from the API
     async getAvailableLanguages() {
         try {
-            const response = await this.loader['getHttpClient']().get('/translations/language');
+            const category = this.options.category || 'web';
+            const url = `/translations/language?category=${category}`;
+            const response = await this.loader['getHttpClient']().get(url);
             return response.data?.languages || ['en']; // Default to English if no languages found
         }
         catch (error) {
@@ -144,49 +113,15 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
             throw error; // Re-throw error instead of returning fallback
         }
     }
-    /**
-     * Get available namespaces for a specific language
-     */
-    async getAvailableNamespaces(language) {
-        try {
-            const response = await this.loader['getHttpClient']().get(`/translations/${language}`);
-            return response.data?.namespaces || [];
-        }
-        catch (error) {
-            this.logger.warn(`Failed to get namespaces for language ${language}:`, error);
-            return [];
-        }
-    }
-    /**
-     * Get translation for a specific key
-     */
-    async getTranslation(key, language) {
-        try {
-            return this.i18nService.translate(key, {
-                lang: language || this.options.defaultLanguage || 'en',
-                args: {},
-            });
-        }
-        catch (error) {
-            this.logger.warn(`Failed to get translation for key ${key}:`, error);
-            return key; // Return the key itself if translation fails
-        }
-    }
-    /**
-     * Check if the translation API is healthy
-     */
+    // Check if the translation API is healthy
     async healthCheck() {
         return this.loader.healthCheck();
     }
-    /**
-     * Get current configuration
-     */
+    // Get current configuration
     getConfig() {
         return { ...this.options };
     }
-    /**
-     * Check if refresh is currently in progress
-     */
+    // Check if refresh is currently in progress
     isRefreshInProgress() {
         return this.isRefreshing;
     }

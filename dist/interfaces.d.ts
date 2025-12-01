@@ -16,6 +16,10 @@ export interface I18nClientModuleOptions {
      */
     defaultLanguage?: string;
     /**
+     * Category for translations (optional, defaults to 'web')
+     */
+    category?: string;
+    /**
      * Retry configuration for failed requests
      */
     retryConfig?: RetryConfig;

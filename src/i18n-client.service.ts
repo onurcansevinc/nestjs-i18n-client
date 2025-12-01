@@ -4,9 +4,7 @@ import { I18nHttpLoader } from './i18n-http-loader';
 import { I18nClientModuleOptions } from './interfaces';
 import { Injectable, Logger, Inject } from '@nestjs/common';
 
-/**
- * Service for managing i18n translations with external API integration
- */
+// Service for managing i18n translations with external API integration
 @Injectable()
 export class I18nClientService {
   private readonly logger = new Logger(I18nClientService.name);
@@ -22,9 +20,7 @@ export class I18nClientService {
     this.loader = (this.i18nService as any).loader as I18nHttpLoader;
   }
 
-  /**
-   * Scheduled job to refresh translations every 3 hours
-   */
+  // Scheduled job to refresh translations every 3 hours
   @Cron('0 */3 * * *', {
     name: 'refreshTranslations',
     timeZone: 'UTC',
@@ -48,9 +44,7 @@ export class I18nClientService {
     }
   }
 
-  /**
-   * Manually trigger translation refresh
-   */
+  // Manually trigger translation refresh
   async manualRefresh(): Promise<void> {
     if (this.isRefreshing) {
       this.logger.warn('Translation refresh already in progress, skipping...');
@@ -71,9 +65,7 @@ export class I18nClientService {
     }
   }
 
-  /**
-   * Perform the actual refresh operation
-   */
+  // Perform the actual refresh operation
   private async performRefresh(): Promise<void> {
     // Check API health first
     const isHealthy = await this.loader.healthCheck();
@@ -87,7 +79,7 @@ export class I18nClientService {
     // Refresh translations for each language
     for (const language of languages) {
       try {
-        await this.refreshLanguageTranslations(language);
+        await this.loader.load();
         this.logger.debug(`Refreshed translations for language: ${language}`);
       } catch (error) {
         this.logger.warn(
@@ -103,7 +95,7 @@ export class I18nClientService {
       !languages.includes(this.options.defaultLanguage)
     ) {
       try {
-        await this.refreshLanguageTranslations(this.options.defaultLanguage);
+        await this.loader.load();
         this.logger.debug(
           `Refreshed translations for default language: ${this.options.defaultLanguage}`
         );
@@ -116,44 +108,12 @@ export class I18nClientService {
     }
   }
 
-  /**
-   * Refresh translations for a specific language
-   */
-  private async refreshLanguageTranslations(language: string): Promise<void> {
-    try {
-      // Load general translations
-      const translations = await this.loader.loadLanguageNamespace(language);
-
-      // Try to load namespace-specific translations
-      const namespaces = await this.getAvailableNamespaces(language);
-
-      for (const namespace of namespaces) {
-        try {
-          await this.loader.loadLanguageNamespace(language, namespace);
-        } catch (error) {
-          this.logger.warn(
-            `Failed to load namespace ${namespace} for language ${language}:`,
-            error
-          );
-        }
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to refresh translations for language ${language}:`,
-        error
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Get available languages from the API
-   */
+  // Get available languages from the API
   private async getAvailableLanguages(): Promise<string[]> {
     try {
-      const response = await this.loader['getHttpClient']().get(
-        '/translations/language'
-      );
+      const category = this.options.category || 'web';
+      const url = `/translations/language?category=${category}`;
+      const response = await this.loader['getHttpClient']().get(url);
       return response.data?.languages || ['en']; // Default to English if no languages found
     } catch (error) {
       this.logger.error('Failed to get available languages:', error);
@@ -161,56 +121,17 @@ export class I18nClientService {
     }
   }
 
-  /**
-   * Get available namespaces for a specific language
-   */
-  private async getAvailableNamespaces(language: string): Promise<string[]> {
-    try {
-      const response = await this.loader['getHttpClient']().get(
-        `/translations/${language}`
-      );
-      return response.data?.namespaces || [];
-    } catch (error) {
-      this.logger.warn(
-        `Failed to get namespaces for language ${language}:`,
-        error
-      );
-      return [];
-    }
-  }
-
-  /**
-   * Get translation for a specific key
-   */
-  async getTranslation(key: string, language?: string): Promise<string> {
-    try {
-      return this.i18nService.translate(key, {
-        lang: language || this.options.defaultLanguage || 'en',
-        args: {},
-      });
-    } catch (error) {
-      this.logger.warn(`Failed to get translation for key ${key}:`, error);
-      return key; // Return the key itself if translation fails
-    }
-  }
-
-  /**
-   * Check if the translation API is healthy
-   */
+  // Check if the translation API is healthy
   async healthCheck(): Promise<boolean> {
     return this.loader.healthCheck();
   }
 
-  /**
-   * Get current configuration
-   */
+  // Get current configuration
   getConfig(): I18nClientModuleOptions {
     return { ...this.options };
   }
 
-  /**
-   * Check if refresh is currently in progress
-   */
+  // Check if refresh is currently in progress
   isRefreshInProgress(): boolean {
     return this.isRefreshing;
   }

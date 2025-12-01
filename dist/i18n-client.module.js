@@ -13,13 +13,9 @@ const i18n_http_loader_1 = require("./i18n-http-loader");
 const i18n_client_service_1 = require("./i18n-client.service");
 const common_1 = require("@nestjs/common");
 const nestjs_i18n_1 = require("nestjs-i18n");
-/**
- * Dynamic module for I18n client functionality
- */
+// Dynamic module for I18n client functionality
 let I18nClientModule = I18nClientModule_1 = class I18nClientModule {
-    /**
-     * Register the module with synchronous options
-     */
+    // Register the module with synchronous options
     static forRoot(options) {
         const providers = [
             {
@@ -47,9 +43,7 @@ let I18nClientModule = I18nClientModule_1 = class I18nClientModule {
             global: true,
         };
     }
-    /**
-     * Register the module with asynchronous options
-     */
+    // Register the module with asynchronous options
     static forRootAsync(options) {
         const providers = [
             {

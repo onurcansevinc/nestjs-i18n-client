@@ -12,14 +12,10 @@ import {
   I18nClientModuleAsyncOptions,
 } from './interfaces';
 
-/**
- * Dynamic module for I18n client functionality
- */
+// Dynamic module for I18n client functionality
 @Module({})
 export class I18nClientModule {
-  /**
-   * Register the module with synchronous options
-   */
+  // Register the module with synchronous options
   static forRoot(options: I18nClientModuleOptions): DynamicModule {
     const providers: Provider[] = [
       {
@@ -49,9 +45,7 @@ export class I18nClientModule {
     };
   }
 
-  /**
-   * Register the module with asynchronous options
-   */
+  // Register the module with asynchronous options
   static forRootAsync(options: I18nClientModuleAsyncOptions): DynamicModule {
     const providers: Provider[] = [
       {

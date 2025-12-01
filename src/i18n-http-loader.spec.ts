@@ -177,61 +177,6 @@ describe('I18nHttpLoader', () => {
     });
   });
 
-  describe('loadLanguageNamespace', () => {
-    beforeEach(() => {
-      loader = new I18nHttpLoader(options);
-    });
-
-    it('should load language translations without namespace', async () => {
-      const mockResponse = {
-        data: {
-          success: true,
-          data: {
-            key1: 'value1',
-          },
-        },
-      };
-      mockAxiosInstance.get.mockResolvedValue(mockResponse as any);
-
-      const translations = await loader.loadLanguageNamespace('en');
-
-      expect(translations).toEqual({ key1: 'value1' });
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/translations/en');
-    });
-
-    it('should load language translations with namespace', async () => {
-      const mockResponse = {
-        data: {
-          success: true,
-          data: {
-            key1: 'value1',
-          },
-        },
-      };
-      mockAxiosInstance.get.mockResolvedValue(mockResponse as any);
-
-      const translations = await loader.loadLanguageNamespace(
-        'en',
-        'validation'
-      );
-
-      expect(translations).toEqual({ key1: 'value1' });
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/translations/en/validation'
-      );
-    });
-
-    it('should throw error when loading fails', async () => {
-      // Use real timers - retry will fail quickly
-      jest.useRealTimers();
-      mockAxiosInstance.get.mockRejectedValue(new Error('Network error'));
-
-      await expect(loader.loadLanguageNamespace('en')).rejects.toThrow(
-        I18nClientError
-      );
-    });
-  });
-
   describe('healthCheck', () => {
     beforeEach(() => {
       loader = new I18nHttpLoader(options);

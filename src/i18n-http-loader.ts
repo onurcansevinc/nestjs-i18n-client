@@ -4,13 +4,10 @@ import { I18nLoader, I18N_LOADER_OPTIONS, I18nTranslation } from 'nestjs-i18n';
 import {
   I18nClientModuleOptions,
   RetryConfig,
-  TranslationData,
   I18nClientError,
 } from './interfaces';
 
-/**
- * Custom HTTP loader for nestjs-i18n that fetches translations from an external API
- */
+// Custom HTTP loader for nestjs-i18n that fetches translations from an external API
 export class I18nHttpLoader extends I18nLoader {
   private httpClient: AxiosInstance | null = null;
   private readonly retryConfig: Required<RetryConfig>;
@@ -36,9 +33,7 @@ export class I18nHttpLoader extends I18nLoader {
     };
   }
 
-  /**
-   * Lazy initialization of axios client
-   */
+  // Lazy initialization of axios client
   private getHttpClient(): AxiosInstance {
     if (!this.httpClient) {
       if (!this.options?.apiUrl || !this.options?.apiKey) {
@@ -72,9 +67,7 @@ export class I18nHttpLoader extends I18nLoader {
     return this.httpClient;
   }
 
-  /**
-   * Check if an error should be retried
-   */
+  // Check if an error should be retried
   private shouldRetry(error: AxiosError, attempt: number): boolean {
     // Don't retry if max retries exceeded
     if (attempt >= this.retryConfig.maxRetries) {
@@ -101,9 +94,7 @@ export class I18nHttpLoader extends I18nLoader {
     return false;
   }
 
-  /**
-   * Calculate delay for exponential backoff
-   */
+  // Calculate delay for exponential backoff
   private calculateDelay(attempt: number): number {
     const delay =
       this.retryConfig.baseDelay *
@@ -111,16 +102,12 @@ export class I18nHttpLoader extends I18nLoader {
     return Math.min(delay, this.retryConfig.maxDelay);
   }
 
-  /**
-   * Sleep utility for delays
-   */
+  // Sleep utility for delays
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  /**
-   * Execute HTTP request with retry logic and exponential backoff
-   */
+  // Execute HTTP request with retry logic and exponential backoff
   private async executeWithRetry<T>(
     requestFn: () => Promise<T>,
     url: string,
@@ -163,21 +150,19 @@ export class I18nHttpLoader extends I18nLoader {
     throw lastError || new Error('Request failed after all retries');
   }
 
-  /**
-   * Manually reset the axios client (e.g., when config changes)
-   */
+  // Manually reset the axios client (e.g., when config changes)
   refreshHttpClient(): void {
     this.httpClient = null;
   }
 
-  /**
-   * Get available languages from API
-   */
+  // Get available languages from API
   async languages(): Promise<string[]> {
     try {
+      const category = this.options.category || 'web';
+      const url = `/translations/language?category=${category}`;
       const res = await this.executeWithRetry(
-        () => this.getHttpClient().get('/translations/language'),
-        '/translations/language',
+        () => this.getHttpClient().get(url),
+        url,
         'GET'
       );
       if (!res.data.success) return [this.options.defaultLanguage || 'en'];
@@ -189,9 +174,7 @@ export class I18nHttpLoader extends I18nLoader {
     }
   }
 
-  /**
-   * Load all translations
-   */
+  // Load all translations
   async load(): Promise<I18nTranslation> {
     try {
       const langs = await this.languages();
@@ -218,16 +201,16 @@ export class I18nHttpLoader extends I18nLoader {
     }
   }
 
-  /**
-   * Fetch translations for a specific language
-   */
+  // Fetch translations for a specific language
   private async fetchLanguageTranslations(
     language: string
   ): Promise<Record<string, any>> {
     try {
+      const category = this.options.category || 'web';
+      const url = `/translations?category=${category}&language=${language}`;
       const res = await this.executeWithRetry(
-        () => this.getHttpClient().get(`/translations/${language}`),
-        `/translations/${language}`,
+        () => this.getHttpClient().get(url),
+        url,
         'GET'
       );
       if (!res.data.success) return {};
@@ -239,46 +222,7 @@ export class I18nHttpLoader extends I18nLoader {
     }
   }
 
-  /**
-   * Load translations for a specific language + namespace
-   */
-  async loadLanguageNamespace(
-    language: string,
-    namespace?: string
-  ): Promise<TranslationData> {
-    const key = namespace ? `${language}:${namespace}` : language;
-
-    try {
-      const url = namespace
-        ? `/translations/${language}/${namespace}`
-        : `/translations/${language}`;
-
-      const res = await this.executeWithRetry(
-        () => this.getHttpClient().get(url),
-        url,
-        'GET'
-      );
-      if (!res.data.success) return {};
-      const data = res.data.data || {};
-
-      this.logger.log(`Loaded translations for: ${key}`);
-
-      return data;
-    } catch (error) {
-      const msg = this.getErrorMessage(error);
-      this.logger.error(`Failed to load '${key}' (${msg})`);
-
-      throw new I18nClientError(
-        `Failed to load ${key}`,
-        undefined,
-        error as Error
-      );
-    }
-  }
-
-  /**
-   * API Health Check
-   */
+  // API Health Check
   async healthCheck(): Promise<boolean> {
     try {
       const res = await this.executeWithRetry(
@@ -295,9 +239,7 @@ export class I18nHttpLoader extends I18nLoader {
     }
   }
 
-  /**
-   * Human-readable error formatter
-   */
+  // Human-readable error formatter
   private getErrorMessage(error: any): string {
     if (error?.isAxiosError) {
       if (error.code === 'ECONNREFUSED')

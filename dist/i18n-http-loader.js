@@ -21,9 +21,7 @@ const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
 const nestjs_i18n_1 = require("nestjs-i18n");
 const interfaces_1 = require("./interfaces");
-/**
- * Custom HTTP loader for nestjs-i18n that fetches translations from an external API
- */
+// Custom HTTP loader for nestjs-i18n that fetches translations from an external API
 let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n_1.I18nLoader {
     options;
     httpClient = null;
@@ -42,9 +40,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
             backoffMultiplier: options?.retryConfig?.backoffMultiplier ?? 2,
         };
     }
-    /**
-     * Lazy initialization of axios client
-     */
+    // Lazy initialization of axios client
     getHttpClient() {
         if (!this.httpClient) {
             if (!this.options?.apiUrl || !this.options?.apiKey) {
@@ -67,9 +63,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
         }
         return this.httpClient;
     }
-    /**
-     * Check if an error should be retried
-     */
+    // Check if an error should be retried
     shouldRetry(error, attempt) {
         // Don't retry if max retries exceeded
         if (attempt >= this.retryConfig.maxRetries) {
@@ -91,23 +85,17 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
         // Don't retry on 4xx client errors (except 429)
         return false;
     }
-    /**
-     * Calculate delay for exponential backoff
-     */
+    // Calculate delay for exponential backoff
     calculateDelay(attempt) {
         const delay = this.retryConfig.baseDelay *
             Math.pow(this.retryConfig.backoffMultiplier, attempt);
         return Math.min(delay, this.retryConfig.maxDelay);
     }
-    /**
-     * Sleep utility for delays
-     */
+    // Sleep utility for delays
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
-    /**
-     * Execute HTTP request with retry logic and exponential backoff
-     */
+    // Execute HTTP request with retry logic and exponential backoff
     async executeWithRetry(requestFn, url, method = 'GET') {
         let lastError = null;
         for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
@@ -132,18 +120,16 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
         // If we get here, all retries failed
         throw lastError || new Error('Request failed after all retries');
     }
-    /**
-     * Manually reset the axios client (e.g., when config changes)
-     */
+    // Manually reset the axios client (e.g., when config changes)
     refreshHttpClient() {
         this.httpClient = null;
     }
-    /**
-     * Get available languages from API
-     */
+    // Get available languages from API
     async languages() {
         try {
-            const res = await this.executeWithRetry(() => this.getHttpClient().get('/translations/language'), '/translations/language', 'GET');
+            const category = this.options.category || 'web';
+            const url = `/translations/language?category=${category}`;
+            const res = await this.executeWithRetry(() => this.getHttpClient().get(url), url, 'GET');
             if (!res.data.success)
                 return [this.options.defaultLanguage || 'en'];
             return res.data.data.languages || [this.options.defaultLanguage || 'en'];
@@ -154,9 +140,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
             return [this.options.defaultLanguage || 'en'];
         }
     }
-    /**
-     * Load all translations
-     */
+    // Load all translations
     async load() {
         try {
             const langs = await this.languages();
@@ -173,12 +157,12 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
             throw new interfaces_1.I18nClientError('Failed to load translations', undefined, error);
         }
     }
-    /**
-     * Fetch translations for a specific language
-     */
+    // Fetch translations for a specific language
     async fetchLanguageTranslations(language) {
         try {
-            const res = await this.executeWithRetry(() => this.getHttpClient().get(`/translations/${language}`), `/translations/${language}`, 'GET');
+            const category = this.options.category || 'web';
+            const url = `/translations?category=${category}&language=${language}`;
+            const res = await this.executeWithRetry(() => this.getHttpClient().get(url), url, 'GET');
             if (!res.data.success)
                 return {};
             return res.data.data || {};
@@ -189,31 +173,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
             return {};
         }
     }
-    /**
-     * Load translations for a specific language + namespace
-     */
-    async loadLanguageNamespace(language, namespace) {
-        const key = namespace ? `${language}:${namespace}` : language;
-        try {
-            const url = namespace
-                ? `/translations/${language}/${namespace}`
-                : `/translations/${language}`;
-            const res = await this.executeWithRetry(() => this.getHttpClient().get(url), url, 'GET');
-            if (!res.data.success)
-                return {};
-            const data = res.data.data || {};
-            this.logger.log(`Loaded translations for: ${key}`);
-            return data;
-        }
-        catch (error) {
-            const msg = this.getErrorMessage(error);
-            this.logger.error(`Failed to load '${key}' (${msg})`);
-            throw new interfaces_1.I18nClientError(`Failed to load ${key}`, undefined, error);
-        }
-    }
-    /**
-     * API Health Check
-     */
+    // API Health Check
     async healthCheck() {
         try {
             const res = await this.executeWithRetry(() => this.getHttpClient().get('/health'), '/health', 'GET');
@@ -225,9 +185,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
             return false;
         }
     }
-    /**
-     * Human-readable error formatter
-     */
+    // Human-readable error formatter
     getErrorMessage(error) {
         if (error?.isAxiosError) {
             if (error.code === 'ECONNREFUSED')
