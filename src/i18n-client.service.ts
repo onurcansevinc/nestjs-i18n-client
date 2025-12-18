@@ -2,11 +2,14 @@ import { Cron } from '@nestjs/schedule';
 import { I18nService } from 'nestjs-i18n';
 import { I18nHttpLoader } from './i18n-http-loader';
 import { I18nClientModuleOptions } from './interfaces';
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { generateTypesFromAPI } from './type-generator';
+import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Service for managing i18n translations with external API integration
 @Injectable()
-export class I18nClientService {
+export class I18nClientService implements OnModuleInit {
   private readonly logger = new Logger(I18nClientService.name);
   private readonly loader: I18nHttpLoader;
   private isRefreshing = false;
@@ -18,6 +21,46 @@ export class I18nClientService {
   ) {
     // Access the loader through I18nService's internal loader
     this.loader = (this.i18nService as any).loader as I18nHttpLoader;
+  }
+
+  // Automatically generate types on module initialization
+  async onModuleInit(): Promise<void> {
+    // Skip type generation in watch mode to prevent restart loops
+    // Watch mode can be detected by checking if NODE_ENV is development
+    // and if the process is being watched (nest start --watch)
+    const isWatchMode =
+      process.env.NODE_ENV === 'development' &&
+      (process.argv.includes('--watch') ||
+        process.argv.includes('start:dev') ||
+        process.env.NEST_WATCH === 'true');
+
+    if (isWatchMode) {
+      // In watch mode, only generate types if file doesn't exist
+      // This prevents unnecessary file writes that trigger restarts
+      try {
+        const packagePath = require.resolve('nestjs-i18n-client/package.json');
+        const typesPath = path.join(path.dirname(packagePath), 'types.d.ts');
+
+        if (fs.existsSync(typesPath)) {
+          this.logger.debug(
+            'Watch mode detected: Skipping type generation (types already exist)'
+          );
+          return;
+        }
+      } catch (error) {
+        // If we can't resolve the package path, continue with generation
+        // This might happen in some edge cases
+      }
+    }
+
+    // Generate types in the background (non-blocking)
+    // This will create types.d.ts in node_modules/nestjs-i18n-client/
+    // The generator function now checks content before writing to avoid unnecessary file changes
+    generateTypesFromAPI(this.options).catch((error) => {
+      this.logger.warn(
+        `Failed to generate TypeScript types: ${error.message}. Types will not be available for autocomplete.`
+      );
+    });
   }
 
   // Scheduled job to refresh translations every 3 hours

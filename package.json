@@ -13,7 +13,8 @@
     "registry": "https://registry.npmjs.org"
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "types.d.ts"
   ],
   "scripts": {
     "build": "tsc",
@@ -21,7 +22,8 @@
     "dev": "tsc --watch",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "generate:types": "ts-node scripts/generate-types.ts"
   },
   "keywords": [
     "nestjs",
@@ -62,6 +64,7 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.0.0",
     "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.0.0"
   },
   "engines": {

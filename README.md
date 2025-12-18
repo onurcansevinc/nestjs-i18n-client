@@ -11,6 +11,7 @@ A NestJS module built on top of `nestjs-i18n` that adds dynamic translation load
 - 🔁 **Retry & Backoff**: Robust error handling with exponential backoff
 - 🏥 **Health Checks**: API health monitoring
 - 📦 **TypeScript Support**: Full TypeScript definitions included
+- ✨ **Type-Safe Autocomplete**: Automatic IntelliSense for translation keys
 - 🧪 **Testing Support**: Easy testing configuration
 
 ## Installation
@@ -104,15 +105,18 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class MyService {
-  constructor(private readonly i18nClient: I18nService) {}
+  constructor(private readonly i18n: I18nService) {}
 
   async getMessage() {
-    // Get translation
-    const message = this.i18nService.t('validation.is_required');
+    // ✨ Type-safe autocomplete works automatically!
+    // Start typing: this.i18n.t('success.
+    const message = this.i18n.t('success.health_status_retrieved_successfully');
     return message;
   }
 }
 ```
+
+**Note**: TypeScript autocomplete is automatically generated on module initialization. No additional setup required!
 
 ## API Endpoints
 
@@ -205,6 +209,74 @@ GET /translations?category=web&language=en
   }
 }
 ```
+
+## TypeScript Autocomplete
+
+The module automatically generates TypeScript types for your translation keys, providing full IntelliSense autocomplete support in your IDE.
+
+### How It Works
+
+1. **Automatic Generation**: When `I18nClientModule` initializes, it fetches translations from your API and generates TypeScript type definitions
+2. **Zero Configuration**: Types are generated automatically - no manual setup required
+3. **Watch Mode Optimized**: Type generation is optimized for `nest start --watch` to prevent restart loops
+4. **Module Augmentation**: Automatically extends `nestjs-i18n`'s `I18nService.t()` method with type-safe autocomplete
+
+### Usage
+
+Simply use `I18nService` as you normally would - autocomplete works automatically:
+
+```typescript
+import { I18nService } from 'nestjs-i18n';
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class MyService {
+  constructor(private readonly i18n: I18nService) {}
+
+  getMessage() {
+    // ✨ IntelliSense will show autocomplete when you type:
+    // this.i18n.t('success.
+    const message = this.i18n.t('success.health_status_retrieved_successfully');
+    // ✅ Fully type-safe with autocomplete!
+    return message;
+  }
+}
+```
+
+### Manual Type Generation
+
+If you need to manually generate types (e.g., in CI/CD), you can use the CLI script:
+
+```bash
+npm run generate:types -- --api-url https://your-api.com --api-key your-key --category web --language en
+```
+
+Or use the programmatic API:
+
+```typescript
+import { generateTypesFromAPI } from 'nestjs-i18n-client';
+
+await generateTypesFromAPI({
+  apiUrl: 'https://your-api.com',
+  apiKey: 'your-key',
+  category: 'web',
+  defaultLanguage: 'en',
+});
+```
+
+### Troubleshooting
+
+**Autocomplete not working?**
+
+1. Make sure your NestJS app has started at least once (types are generated on module initialization)
+2. Restart your TypeScript server in your IDE (VS Code: `Cmd/Ctrl + Shift + P` → "TypeScript: Restart TS Server")
+3. Check that `node_modules/nestjs-i18n-client/types.d.ts` exists and contains your translation keys
+
+**Types not generated?**
+
+- Check your API URL and API key are correct
+- Verify the API endpoint `/translations?category=web&language=en` returns data
+- Check application logs for type generation errors (they're logged as warnings)
 
 ## Configuration Options
 
