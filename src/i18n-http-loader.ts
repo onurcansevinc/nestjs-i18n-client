@@ -193,11 +193,19 @@ export class I18nHttpLoader extends I18nLoader {
       const msg = this.getErrorMessage(error);
       this.logger.error(`Failed to load translations (${msg})`);
 
-      throw new I18nClientError(
-        'Failed to load translations',
-        undefined,
-        error as Error
+      if (this.options.failOnLoadError) {
+        throw new I18nClientError(
+          'Failed to load translations',
+          undefined,
+          error as Error
+        );
+      }
+
+      const fallbackLanguage = this.options.defaultLanguage || 'en';
+      this.logger.warn(
+        `Continuing without translations. Using empty data for '${fallbackLanguage}'.`
       );
+      return { [fallbackLanguage]: {} };
     }
   }
 

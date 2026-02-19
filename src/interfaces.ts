@@ -28,6 +28,17 @@ export interface I18nClientModuleOptions {
    * Retry configuration for failed requests
    */
   retryConfig?: RetryConfig;
+
+  /**
+   * If true, throw when translations cannot be loaded.
+   * If false (default), log and continue with empty translations.
+   */
+  failOnLoadError?: boolean;
+
+  /**
+   * Disable automatic type generation on module init.
+   */
+  disableTypeGeneration?: boolean;
 }
 
 /**
