@@ -154,7 +154,12 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
         catch (error) {
             const msg = this.getErrorMessage(error);
             this.logger.error(`Failed to load translations (${msg})`);
-            throw new interfaces_1.I18nClientError('Failed to load translations', undefined, error);
+            if (this.options.failOnLoadError) {
+                throw new interfaces_1.I18nClientError('Failed to load translations', undefined, error);
+            }
+            const fallbackLanguage = this.options.defaultLanguage || 'en';
+            this.logger.warn(`Continuing without translations. Using empty data for '${fallbackLanguage}'.`);
+            return { [fallbackLanguage]: {} };
         }
     }
     // Fetch translations for a specific language

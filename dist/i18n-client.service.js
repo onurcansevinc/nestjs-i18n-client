@@ -68,6 +68,10 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
     }
     // Automatically generate types on module initialization
     async onModuleInit() {
+        if (this.options.disableTypeGeneration || process.env.I18N_CLIENT_SKIP_TYPES === 'true') {
+            this.logger.debug('Type generation disabled by configuration.');
+            return;
+        }
         // Skip type generation in watch mode to prevent restart loops
         // Watch mode can be detected by checking if NODE_ENV is development
         // and if the process is being watched (nest start --watch)
