@@ -32,6 +32,11 @@ export interface I18nClientModuleOptions {
      * Disable automatic type generation on module init.
      */
     disableTypeGeneration?: boolean;
+    /**
+     * Enable or disable remote i18n loading.
+     * When false, no HTTP requests are made and empty translations are used.
+     */
+    enabled?: boolean;
 }
 /**
  * Async configuration factory for the I18nClientModule

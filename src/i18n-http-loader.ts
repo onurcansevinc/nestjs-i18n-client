@@ -157,6 +157,10 @@ export class I18nHttpLoader extends I18nLoader {
 
   // Get available languages from API
   async languages(): Promise<string[]> {
+    if (this.options.enabled === false) {
+      return [this.options.defaultLanguage || 'en'];
+    }
+
     try {
       const category = this.options.category || 'web';
       const url = `/translations/language?category=${category}`;
@@ -176,6 +180,14 @@ export class I18nHttpLoader extends I18nLoader {
 
   // Load all translations
   async load(): Promise<I18nTranslation> {
+    if (this.options.enabled === false) {
+      const fallbackLanguage = this.options.defaultLanguage || 'en';
+      this.logger.debug(
+        `I18nHttpLoader disabled. Using empty data for '${fallbackLanguage}'.`
+      );
+      return { [fallbackLanguage]: {} };
+    }
+
     try {
       const langs = await this.languages();
       const translations: I18nTranslation = {};
@@ -232,6 +244,10 @@ export class I18nHttpLoader extends I18nLoader {
 
   // API Health Check
   async healthCheck(): Promise<boolean> {
+    if (this.options.enabled === false) {
+      return false;
+    }
+
     try {
       const res = await this.executeWithRetry(
         () => this.getHttpClient().get('/health'),

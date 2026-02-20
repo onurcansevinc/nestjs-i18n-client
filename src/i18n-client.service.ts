@@ -25,7 +25,11 @@ export class I18nClientService implements OnModuleInit {
 
   // Automatically generate types on module initialization
   async onModuleInit(): Promise<void> {
-    if (this.options.disableTypeGeneration || process.env.I18N_CLIENT_SKIP_TYPES === 'true') {
+    if (
+      this.options.disableTypeGeneration ||
+      this.options.enabled === false ||
+      process.env.I18N_CLIENT_SKIP_TYPES === 'true'
+    ) {
       this.logger.debug('Type generation disabled by configuration.');
       return;
     }

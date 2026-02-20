@@ -68,7 +68,9 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
     }
     // Automatically generate types on module initialization
     async onModuleInit() {
-        if (this.options.disableTypeGeneration || process.env.I18N_CLIENT_SKIP_TYPES === 'true') {
+        if (this.options.disableTypeGeneration ||
+            this.options.enabled === false ||
+            process.env.I18N_CLIENT_SKIP_TYPES === 'true') {
             this.logger.debug('Type generation disabled by configuration.');
             return;
         }

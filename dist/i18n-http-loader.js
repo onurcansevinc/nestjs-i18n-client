@@ -126,6 +126,9 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
     }
     // Get available languages from API
     async languages() {
+        if (this.options.enabled === false) {
+            return [this.options.defaultLanguage || 'en'];
+        }
         try {
             const category = this.options.category || 'web';
             const url = `/translations/language?category=${category}`;
@@ -142,6 +145,11 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
     }
     // Load all translations
     async load() {
+        if (this.options.enabled === false) {
+            const fallbackLanguage = this.options.defaultLanguage || 'en';
+            this.logger.debug(`I18nHttpLoader disabled. Using empty data for '${fallbackLanguage}'.`);
+            return { [fallbackLanguage]: {} };
+        }
         try {
             const langs = await this.languages();
             const translations = {};
@@ -180,6 +188,9 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
     }
     // API Health Check
     async healthCheck() {
+        if (this.options.enabled === false) {
+            return false;
+        }
         try {
             const res = await this.executeWithRetry(() => this.getHttpClient().get('/health'), '/health', 'GET');
             return res.status >= 200 && res.status < 300;
