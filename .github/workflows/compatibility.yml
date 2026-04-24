@@ -1,0 +1,36 @@
+name: Compatibility
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  nestjs-i18n:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22]
+        nestjs-i18n-version: ['10.6.0', '10.8.0']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install matrix nestjs-i18n version
+        run: npm install --no-save nestjs-i18n@${{ matrix.nestjs-i18n-version }}
+
+      - name: Build
+        run: npm run build
+
+      - name: Run compatibility regression test
+        run: npm run test:compat:i18n

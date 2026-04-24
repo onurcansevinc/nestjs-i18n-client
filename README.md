@@ -30,21 +30,22 @@ npm install @nestjs/common @nestjs/core @nestjs/schedule nestjs-i18n rxjs reflec
 
 **Compatible Versions**:
 
-- `@nestjs/common`: >=10.0.0
-- `@nestjs/core`: >=10.0.0
-- `@nestjs/schedule`: >=4.0.0
-- `nestjs-i18n`: ^10.0.0
-- `rxjs`: >=7.0.0
-- `reflect-metadata`: >=0.1.13
-- `class-validator`: >=0.13.0
-- `class-transformer`: >=0.4.0
+- `@nestjs/common`: ^10.0.0 || ^11.0.0
+- `@nestjs/core`: ^10.0.0 || ^11.0.0
+- `@nestjs/schedule`: ^4.0.0 || ^5.0.0
+- `nestjs-i18n`: >=10.6.0 <11.0.0
+- `rxjs`: ^7.0.0
+- `reflect-metadata`: ^0.1.13 || ^0.2.0
+- `class-validator`: ^0.13.0 || ^0.14.0
+- `class-transformer`: ^0.4.0 || ^0.5.0
 
 **Important**:
 
 - Make sure to install `reflect-metadata` as it's required for NestJS decorators to work properly
 - The package uses CommonJS format for maximum compatibility with NestJS projects
 - All runtime dependencies are properly declared as peerDependencies to avoid version conflicts
-- Async module configuration explicitly registers the custom HTTP loader so the package works with current `nestjs-i18n` 10.x releases
+- Peer dependency ranges are capped to tested major/minor lines instead of open-ended `>=` ranges
+- The repo keeps an exact dev dependency for `nestjs-i18n` and a compatibility test for supported 10.x lines
 
 ## Quick Start
 
