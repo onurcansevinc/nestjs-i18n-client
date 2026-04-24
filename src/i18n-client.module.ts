@@ -66,6 +66,7 @@ export class I18nClientModule {
             const clientOptions = await options.useFactory(...args);
             return {
               fallbackLanguage: clientOptions.defaultLanguage || 'en',
+              loader: I18nHttpLoader,
               loaderOptions: clientOptions,
             };
           },

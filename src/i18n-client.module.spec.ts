@@ -95,5 +95,24 @@ describe('I18nClientModule', () => {
         process.env.I18N_DEFAULT_LANGUAGE || 'tr'
       );
     });
+
+    it('should initialize successfully with async configuration when remote loading is disabled', async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        imports: [
+          I18nClientModule.forRootAsync({
+            useFactory: async () => ({
+              apiUrl: 'https://api.example.com',
+              apiKey: 'test-token',
+              defaultLanguage: 'en',
+              enabled: false,
+              disableTypeGeneration: true,
+            }),
+          }),
+        ],
+      }).compile();
+
+      await expect(module.init()).resolves.toBeDefined();
+      await module.close();
+    });
   });
 });
