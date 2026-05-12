@@ -32,7 +32,7 @@ npm install @nestjs/common @nestjs/core @nestjs/schedule nestjs-i18n rxjs reflec
 
 - `@nestjs/common`: ^10.0.0 || ^11.0.0
 - `@nestjs/core`: ^10.0.0 || ^11.0.0
-- `@nestjs/schedule`: ^4.0.0 || ^5.0.0
+- `@nestjs/schedule`: ^4.0.0 || ^5.0.0 || ^6.0.0
 - `nestjs-i18n`: >=10.6.0 <11.0.0
 - `rxjs`: ^7.0.0
 - `reflect-metadata`: ^0.1.13 || ^0.2.0
