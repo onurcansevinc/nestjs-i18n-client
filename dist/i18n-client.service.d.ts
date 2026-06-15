@@ -8,12 +8,13 @@ export declare class I18nClientService implements OnModuleInit {
     private readonly loader;
     private isRefreshing;
     constructor(options: I18nClientModuleOptions, i18nService: I18nService);
+    private resolveLoader;
     onModuleInit(): Promise<void>;
     refreshTranslations(): Promise<void>;
     manualRefresh(): Promise<void>;
     private performRefresh;
-    private getAvailableLanguages;
     healthCheck(): Promise<boolean>;
     getConfig(): I18nClientModuleOptions;
     isRefreshInProgress(): boolean;
+    private getErrorMessage;
 }

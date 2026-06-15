@@ -63,8 +63,15 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
     constructor(options, i18nService) {
         this.options = options;
         this.i18nService = i18nService;
-        // Access the loader through I18nService's internal loader
-        this.loader = this.i18nService.loader;
+        this.loader = this.resolveLoader();
+    }
+    resolveLoader() {
+        const i18nService = this.i18nService;
+        const loader = i18nService.loader || i18nService.loaders?.[0];
+        if (!loader) {
+            throw new Error('I18nClientService: I18nHttpLoader is not available.');
+        }
+        return loader;
     }
     // Automatically generate types on module initialization
     async onModuleInit() {
@@ -106,6 +113,10 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
     }
     // Scheduled job to refresh translations every 3 hours
     async refreshTranslations() {
+        if (this.options.enabled === false) {
+            this.logger.debug('Translation refresh disabled by configuration.');
+            return;
+        }
         if (this.isRefreshing) {
             this.logger.warn('Translation refresh already in progress, skipping...');
             return;
@@ -117,7 +128,7 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
             this.logger.log('Scheduled translation refresh completed successfully');
         }
         catch (error) {
-            this.logger.error('Scheduled translation refresh failed:', error);
+            this.logger.error(`Scheduled translation refresh failed: ${this.getErrorMessage(error)}`);
         }
         finally {
             this.isRefreshing = false;
@@ -125,6 +136,10 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
     }
     // Manually trigger translation refresh
     async manualRefresh() {
+        if (this.options.enabled === false) {
+            this.logger.debug('Translation refresh disabled by configuration.');
+            return;
+        }
         if (this.isRefreshing) {
             this.logger.warn('Translation refresh already in progress, skipping...');
             return;
@@ -145,47 +160,14 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
     }
     // Perform the actual refresh operation
     async performRefresh() {
-        // Check API health first
         const isHealthy = await this.loader.healthCheck();
         if (!isHealthy) {
             throw new Error('Translation API is not healthy');
         }
-        // Get available languages from the API
-        const languages = await this.getAvailableLanguages();
-        // Refresh translations for each language
-        for (const language of languages) {
-            try {
-                await this.loader.load();
-                this.logger.debug(`Refreshed translations for language: ${language}`);
-            }
-            catch (error) {
-                this.logger.warn(`Failed to refresh translations for language ${language}:`, error);
-            }
-        }
-        // Also refresh default language if specified and different
-        if (this.options.defaultLanguage &&
-            !languages.includes(this.options.defaultLanguage)) {
-            try {
-                await this.loader.load();
-                this.logger.debug(`Refreshed translations for default language: ${this.options.defaultLanguage}`);
-            }
-            catch (error) {
-                this.logger.warn(`Failed to refresh translations for default language ${this.options.defaultLanguage}:`, error);
-            }
-        }
-    }
-    // Get available languages from the API
-    async getAvailableLanguages() {
-        try {
-            const category = this.options.category || 'web';
-            const url = `/translations/language?category=${category}`;
-            const response = await this.loader['getHttpClient']().get(url);
-            return response.data?.languages || ['en']; // Default to English if no languages found
-        }
-        catch (error) {
-            this.logger.error('Failed to get available languages:', error);
-            throw error; // Re-throw error instead of returning fallback
-        }
+        const translations = await this.loader.load();
+        const languages = Object.keys(translations);
+        await this.i18nService.refresh(translations, languages.length ? languages : await this.loader.languages());
+        this.logger.debug(`Refreshed translations for: ${Object.keys(translations).join(', ')}`);
     }
     // Check if the translation API is healthy
     async healthCheck() {
@@ -198,6 +180,12 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
     // Check if refresh is currently in progress
     isRefreshInProgress() {
         return this.isRefreshing;
+    }
+    getErrorMessage(error) {
+        if (error instanceof Error) {
+            return error.stack || error.message;
+        }
+        return String(error);
     }
 };
 exports.I18nClientService = I18nClientService;

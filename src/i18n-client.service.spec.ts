@@ -20,10 +20,12 @@ describe('I18nClientService', () => {
     mockLoader = {
       healthCheck: jest.fn(),
       languages: jest.fn(),
+      load: jest.fn(),
     } as any;
 
     mockI18nService = {
       translate: jest.fn(),
+      refresh: jest.fn(),
       loader: mockLoader,
     } as any;
 
@@ -53,15 +55,21 @@ describe('I18nClientService', () => {
   describe('manualRefresh', () => {
     it('should refresh translations successfully', async () => {
       mockLoader.healthCheck.mockResolvedValue(true);
-      mockLoader['getHttpClient'] = jest.fn().mockReturnValue({
-        get: jest.fn().mockResolvedValue({
-          data: { languages: ['en', 'tr'] },
-        }),
+      mockLoader.load.mockResolvedValue({
+        en: { hello: 'Hello' },
+        tr: { hello: 'Merhaba' },
       });
 
       await service.manualRefresh();
 
       expect(mockLoader.healthCheck).toHaveBeenCalled();
+      expect(mockI18nService.refresh).toHaveBeenCalledWith(
+        {
+          en: { hello: 'Hello' },
+          tr: { hello: 'Merhaba' },
+        },
+        ['en', 'tr']
+      );
     });
 
     it('should throw error when API is unhealthy', async () => {
@@ -75,11 +83,68 @@ describe('I18nClientService', () => {
     it('should throw error when refresh fails', async () => {
       mockLoader.healthCheck.mockResolvedValue(true);
       const networkError = new Error('Network error');
-      mockLoader['getHttpClient'] = jest.fn().mockReturnValue({
-        get: jest.fn().mockRejectedValue(networkError),
-      });
+      mockLoader.load.mockRejectedValue(networkError);
 
       await expect(service.manualRefresh()).rejects.toThrow('Network error');
+    });
+
+    it('should skip refresh when disabled', async () => {
+      const disabledModule: TestingModule = await Test.createTestingModule({
+        providers: [
+          I18nClientService,
+          {
+            provide: 'I18N_CLIENT_OPTIONS',
+            useValue: { ...options, enabled: false },
+          },
+          {
+            provide: I18nService,
+            useValue: mockI18nService,
+          },
+        ],
+      }).compile();
+
+      const disabledService =
+        disabledModule.get<I18nClientService>(I18nClientService);
+
+      await disabledService.refreshTranslations();
+
+      expect(mockLoader.healthCheck).not.toHaveBeenCalled();
+      expect(mockI18nService.refresh).not.toHaveBeenCalled();
+    });
+
+    it('should resolve loader from nestjs-i18n 10.8 loaders array', async () => {
+      const i18nServiceWithLoaders = {
+        translate: jest.fn(),
+        refresh: jest.fn(),
+        loaders: [mockLoader],
+      } as any;
+
+      const moduleWithLoaders: TestingModule = await Test.createTestingModule({
+        providers: [
+          I18nClientService,
+          {
+            provide: 'I18N_CLIENT_OPTIONS',
+            useValue: options,
+          },
+          {
+            provide: I18nService,
+            useValue: i18nServiceWithLoaders,
+          },
+        ],
+      }).compile();
+
+      const serviceWithLoaders =
+        moduleWithLoaders.get<I18nClientService>(I18nClientService);
+
+      mockLoader.healthCheck.mockResolvedValue(true);
+      mockLoader.load.mockResolvedValue({ en: {} });
+
+      await serviceWithLoaders.manualRefresh();
+
+      expect(i18nServiceWithLoaders.refresh).toHaveBeenCalledWith(
+        { en: {} },
+        ['en']
+      );
     });
   });
 
@@ -110,15 +175,13 @@ describe('I18nClientService', () => {
 
     it('should return true during refresh', async () => {
       mockLoader.healthCheck.mockResolvedValue(true);
-      mockLoader['getHttpClient'] = jest.fn().mockReturnValue({
-        get: jest.fn().mockImplementation(
-          () =>
-            new Promise((resolve) => {
-              // Delay to allow checking isRefreshing flag
-              setTimeout(() => resolve({ data: { languages: ['en'] } }), 10);
-            })
-        ),
-      });
+      mockLoader.load.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            // Delay to allow checking isRefreshing flag
+            setTimeout(() => resolve({ en: {} }), 10);
+          })
+      );
 
       const refreshPromise = service.manualRefresh();
 

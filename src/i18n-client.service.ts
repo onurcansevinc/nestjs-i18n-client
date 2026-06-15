@@ -19,8 +19,18 @@ export class I18nClientService implements OnModuleInit {
     private readonly options: I18nClientModuleOptions,
     private readonly i18nService: I18nService
   ) {
-    // Access the loader through I18nService's internal loader
-    this.loader = (this.i18nService as any).loader as I18nHttpLoader;
+    this.loader = this.resolveLoader();
+  }
+
+  private resolveLoader(): I18nHttpLoader {
+    const i18nService = this.i18nService as any;
+    const loader = i18nService.loader || i18nService.loaders?.[0];
+
+    if (!loader) {
+      throw new Error('I18nClientService: I18nHttpLoader is not available.');
+    }
+
+    return loader as I18nHttpLoader;
   }
 
   // Automatically generate types on module initialization
@@ -78,6 +88,11 @@ export class I18nClientService implements OnModuleInit {
     timeZone: 'UTC',
   })
   async refreshTranslations(): Promise<void> {
+    if (this.options.enabled === false) {
+      this.logger.debug('Translation refresh disabled by configuration.');
+      return;
+    }
+
     if (this.isRefreshing) {
       this.logger.warn('Translation refresh already in progress, skipping...');
       return;
@@ -90,7 +105,9 @@ export class I18nClientService implements OnModuleInit {
       await this.performRefresh();
       this.logger.log('Scheduled translation refresh completed successfully');
     } catch (error) {
-      this.logger.error('Scheduled translation refresh failed:', error);
+      this.logger.error(
+        `Scheduled translation refresh failed: ${this.getErrorMessage(error)}`
+      );
     } finally {
       this.isRefreshing = false;
     }
@@ -98,6 +115,11 @@ export class I18nClientService implements OnModuleInit {
 
   // Manually trigger translation refresh
   async manualRefresh(): Promise<void> {
+    if (this.options.enabled === false) {
+      this.logger.debug('Translation refresh disabled by configuration.');
+      return;
+    }
+
     if (this.isRefreshing) {
       this.logger.warn('Translation refresh already in progress, skipping...');
       return;
@@ -119,58 +141,22 @@ export class I18nClientService implements OnModuleInit {
 
   // Perform the actual refresh operation
   private async performRefresh(): Promise<void> {
-    // Check API health first
     const isHealthy = await this.loader.healthCheck();
     if (!isHealthy) {
       throw new Error('Translation API is not healthy');
     }
 
-    // Get available languages from the API
-    const languages = await this.getAvailableLanguages();
+    const translations = await this.loader.load();
+    const languages = Object.keys(translations);
 
-    // Refresh translations for each language
-    for (const language of languages) {
-      try {
-        await this.loader.load();
-        this.logger.debug(`Refreshed translations for language: ${language}`);
-      } catch (error) {
-        this.logger.warn(
-          `Failed to refresh translations for language ${language}:`,
-          error
-        );
-      }
-    }
+    await this.i18nService.refresh(
+      translations,
+      languages.length ? languages : await this.loader.languages()
+    );
 
-    // Also refresh default language if specified and different
-    if (
-      this.options.defaultLanguage &&
-      !languages.includes(this.options.defaultLanguage)
-    ) {
-      try {
-        await this.loader.load();
-        this.logger.debug(
-          `Refreshed translations for default language: ${this.options.defaultLanguage}`
-        );
-      } catch (error) {
-        this.logger.warn(
-          `Failed to refresh translations for default language ${this.options.defaultLanguage}:`,
-          error
-        );
-      }
-    }
-  }
-
-  // Get available languages from the API
-  private async getAvailableLanguages(): Promise<string[]> {
-    try {
-      const category = this.options.category || 'web';
-      const url = `/translations/language?category=${category}`;
-      const response = await this.loader['getHttpClient']().get(url);
-      return response.data?.languages || ['en']; // Default to English if no languages found
-    } catch (error) {
-      this.logger.error('Failed to get available languages:', error);
-      throw error; // Re-throw error instead of returning fallback
-    }
+    this.logger.debug(
+      `Refreshed translations for: ${Object.keys(translations).join(', ')}`
+    );
   }
 
   // Check if the translation API is healthy
@@ -186,5 +172,13 @@ export class I18nClientService implements OnModuleInit {
   // Check if refresh is currently in progress
   isRefreshInProgress(): boolean {
     return this.isRefreshing;
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.stack || error.message;
+    }
+
+    return String(error);
   }
 }
