@@ -287,7 +287,10 @@ interface I18nClientModuleOptions {
   apiKey: string; // API key for authentication
   defaultLanguage?: string; // Default language code (default: 'en')
   category?: string; // Category for translations (default: 'web')
-  retryConfig?: RetryConfig; // Retry configuration
+  retryConfig?: RetryConfig; // Retry config for manual/scheduled refresh
+  bootstrapRetryConfig?: RetryConfig; // Retry config for initial app bootstrap (default: no retries)
+  requestTimeout?: number; // HTTP timeout in ms (default: 5000)
+  failOnLoadError?: boolean; // Throw when initial loading fails (default: false)
 }
 
 interface RetryConfig {
@@ -297,6 +300,11 @@ interface RetryConfig {
   backoffMultiplier?: number; // Backoff multiplier (default: 2)
 }
 ```
+
+Initial application bootstrap is fail-open by default: if the translation API
+does not respond, the module returns empty fallback translations immediately
+instead of blocking the host application through retry chains. Manual and
+scheduled refreshes still use `retryConfig`.
 
 ## Scheduled Updates
 

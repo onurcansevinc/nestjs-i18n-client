@@ -186,7 +186,7 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
         if (!isHealthy) {
             throw new Error('Translation API is not healthy');
         }
-        const translations = await this.loader.load();
+        const translations = await this.loader.loadWithRetry();
         const languages = Object.keys(translations);
         await this.i18nService.refresh(translations, languages.length ? languages : await this.loader.languages());
         this.logger.debug(`Refreshed translations for: ${Object.keys(translations).join(', ')}`);

@@ -11,6 +11,7 @@ import {
 export class I18nHttpLoader extends I18nLoader {
   private httpClient: AxiosInstance | null = null;
   private readonly retryConfig: Required<RetryConfig>;
+  private readonly bootstrapRetryConfig: Required<RetryConfig>;
   private readonly logger = new Logger(I18nHttpLoader.name);
 
   constructor(
@@ -31,6 +32,13 @@ export class I18nHttpLoader extends I18nLoader {
       maxDelay: options?.retryConfig?.maxDelay ?? 10000,
       backoffMultiplier: options?.retryConfig?.backoffMultiplier ?? 2,
     };
+
+    this.bootstrapRetryConfig = {
+      maxRetries: options?.bootstrapRetryConfig?.maxRetries ?? 0,
+      baseDelay: options?.bootstrapRetryConfig?.baseDelay ?? 1000,
+      maxDelay: options?.bootstrapRetryConfig?.maxDelay ?? 10000,
+      backoffMultiplier: options?.bootstrapRetryConfig?.backoffMultiplier ?? 2,
+    };
   }
 
   // Lazy initialization of axios client
@@ -42,7 +50,7 @@ export class I18nHttpLoader extends I18nLoader {
 
       this.httpClient = axios.create({
         baseURL: this.options.apiUrl,
-        timeout: 30000,
+        timeout: this.options.requestTimeout ?? 5000,
         headers: {
           'x-api-key': this.options.apiKey,
           'Content-Type': 'application/json',
@@ -68,9 +76,13 @@ export class I18nHttpLoader extends I18nLoader {
   }
 
   // Check if an error should be retried
-  private shouldRetry(error: AxiosError, attempt: number): boolean {
+  private shouldRetry(
+    error: AxiosError,
+    attempt: number,
+    retryConfig: Required<RetryConfig>
+  ): boolean {
     // Don't retry if max retries exceeded
-    if (attempt >= this.retryConfig.maxRetries) {
+    if (attempt >= retryConfig.maxRetries) {
       return false;
     }
 
@@ -95,11 +107,13 @@ export class I18nHttpLoader extends I18nLoader {
   }
 
   // Calculate delay for exponential backoff
-  private calculateDelay(attempt: number): number {
+  private calculateDelay(
+    attempt: number,
+    retryConfig: Required<RetryConfig>
+  ): number {
     const delay =
-      this.retryConfig.baseDelay *
-      Math.pow(this.retryConfig.backoffMultiplier, attempt);
-    return Math.min(delay, this.retryConfig.maxDelay);
+      retryConfig.baseDelay * Math.pow(retryConfig.backoffMultiplier, attempt);
+    return Math.min(delay, retryConfig.maxDelay);
   }
 
   // Sleep utility for delays
@@ -111,11 +125,12 @@ export class I18nHttpLoader extends I18nLoader {
   private async executeWithRetry<T>(
     requestFn: () => Promise<T>,
     url: string,
-    method: string = 'GET'
+    method: string = 'GET',
+    retryConfig: Required<RetryConfig> = this.retryConfig
   ): Promise<T> {
     let lastError: AxiosError | Error | null = null;
 
-    for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
       try {
         return await requestFn();
       } catch (error) {
@@ -123,21 +138,21 @@ export class I18nHttpLoader extends I18nLoader {
         const axiosError = error as AxiosError;
 
         // Check if we should retry
-        if (!this.shouldRetry(axiosError, attempt)) {
+        if (!this.shouldRetry(axiosError, attempt, retryConfig)) {
           this.logger.debug(
             `Not retrying [${method} ${url}] - attempt ${attempt + 1}/${
-              this.retryConfig.maxRetries + 1
+              retryConfig.maxRetries + 1
             }`
           );
           throw error;
         }
 
         // Calculate delay for next retry
-        const delay = this.calculateDelay(attempt);
+        const delay = this.calculateDelay(attempt, retryConfig);
 
         this.logger.warn(
           `Request failed [${method} ${url}] - attempt ${attempt + 1}/${
-            this.retryConfig.maxRetries + 1
+            retryConfig.maxRetries + 1
           }, retrying in ${delay}ms...`
         );
 
@@ -156,7 +171,9 @@ export class I18nHttpLoader extends I18nLoader {
   }
 
   // Get available languages from API
-  async languages(): Promise<string[]> {
+  async languages(
+    retryConfig: Required<RetryConfig> = this.retryConfig
+  ): Promise<string[]> {
     if (this.options.enabled === false) {
       return [this.options.defaultLanguage || 'en'];
     }
@@ -167,7 +184,8 @@ export class I18nHttpLoader extends I18nLoader {
       const res = await this.executeWithRetry(
         () => this.getHttpClient().get(url),
         url,
-        'GET'
+        'GET',
+        retryConfig
       );
       if (!res.data.success) return [this.options.defaultLanguage || 'en'];
       return res.data.data.languages || [this.options.defaultLanguage || 'en'];
@@ -180,6 +198,17 @@ export class I18nHttpLoader extends I18nLoader {
 
   // Load all translations
   async load(): Promise<I18nTranslation> {
+    return this.loadWithConfig(this.bootstrapRetryConfig);
+  }
+
+  // Load translations with the regular retry policy for background refreshes.
+  async loadWithRetry(): Promise<I18nTranslation> {
+    return this.loadWithConfig(this.retryConfig);
+  }
+
+  private async loadWithConfig(
+    retryConfig: Required<RetryConfig>
+  ): Promise<I18nTranslation> {
     if (this.options.enabled === false) {
       const fallbackLanguage = this.options.defaultLanguage || 'en';
       this.logger.debug(
@@ -189,11 +218,14 @@ export class I18nHttpLoader extends I18nLoader {
     }
 
     try {
-      const langs = await this.languages();
+      const langs = await this.languages(retryConfig);
       const translations: I18nTranslation = {};
 
       for (const lang of langs) {
-        translations[lang] = await this.fetchLanguageTranslations(lang);
+        translations[lang] = await this.fetchLanguageTranslations(
+          lang,
+          retryConfig
+        );
       }
 
       this.logger.log(
@@ -223,7 +255,8 @@ export class I18nHttpLoader extends I18nLoader {
 
   // Fetch translations for a specific language
   private async fetchLanguageTranslations(
-    language: string
+    language: string,
+    retryConfig: Required<RetryConfig>
   ): Promise<Record<string, any>> {
     try {
       const category = this.options.category || 'web';
@@ -231,7 +264,8 @@ export class I18nHttpLoader extends I18nLoader {
       const res = await this.executeWithRetry(
         () => this.getHttpClient().get(url),
         url,
-        'GET'
+        'GET',
+        retryConfig
       );
       if (!res.data.success) return {};
       return res.data.data || {};

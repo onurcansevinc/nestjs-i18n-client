@@ -26,6 +26,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
     options;
     httpClient = null;
     retryConfig;
+    bootstrapRetryConfig;
     logger = new common_1.Logger(I18nHttpLoader_1.name);
     constructor(options) {
         super();
@@ -39,6 +40,12 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
             maxDelay: options?.retryConfig?.maxDelay ?? 10000,
             backoffMultiplier: options?.retryConfig?.backoffMultiplier ?? 2,
         };
+        this.bootstrapRetryConfig = {
+            maxRetries: options?.bootstrapRetryConfig?.maxRetries ?? 0,
+            baseDelay: options?.bootstrapRetryConfig?.baseDelay ?? 1000,
+            maxDelay: options?.bootstrapRetryConfig?.maxDelay ?? 10000,
+            backoffMultiplier: options?.bootstrapRetryConfig?.backoffMultiplier ?? 2,
+        };
     }
     // Lazy initialization of axios client
     getHttpClient() {
@@ -48,7 +55,7 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
             }
             this.httpClient = axios_1.default.create({
                 baseURL: this.options.apiUrl,
-                timeout: 30000,
+                timeout: this.options.requestTimeout ?? 5000,
                 headers: {
                     'x-api-key': this.options.apiKey,
                     'Content-Type': 'application/json',
@@ -64,9 +71,9 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
         return this.httpClient;
     }
     // Check if an error should be retried
-    shouldRetry(error, attempt) {
+    shouldRetry(error, attempt, retryConfig) {
         // Don't retry if max retries exceeded
-        if (attempt >= this.retryConfig.maxRetries) {
+        if (attempt >= retryConfig.maxRetries) {
             return false;
         }
         // Retry on network errors (no response received)
@@ -86,19 +93,18 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
         return false;
     }
     // Calculate delay for exponential backoff
-    calculateDelay(attempt) {
-        const delay = this.retryConfig.baseDelay *
-            Math.pow(this.retryConfig.backoffMultiplier, attempt);
-        return Math.min(delay, this.retryConfig.maxDelay);
+    calculateDelay(attempt, retryConfig) {
+        const delay = retryConfig.baseDelay * Math.pow(retryConfig.backoffMultiplier, attempt);
+        return Math.min(delay, retryConfig.maxDelay);
     }
     // Sleep utility for delays
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
     // Execute HTTP request with retry logic and exponential backoff
-    async executeWithRetry(requestFn, url, method = 'GET') {
+    async executeWithRetry(requestFn, url, method = 'GET', retryConfig = this.retryConfig) {
         let lastError = null;
-        for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
+        for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
             try {
                 return await requestFn();
             }
@@ -106,13 +112,13 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
                 lastError = error;
                 const axiosError = error;
                 // Check if we should retry
-                if (!this.shouldRetry(axiosError, attempt)) {
-                    this.logger.debug(`Not retrying [${method} ${url}] - attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}`);
+                if (!this.shouldRetry(axiosError, attempt, retryConfig)) {
+                    this.logger.debug(`Not retrying [${method} ${url}] - attempt ${attempt + 1}/${retryConfig.maxRetries + 1}`);
                     throw error;
                 }
                 // Calculate delay for next retry
-                const delay = this.calculateDelay(attempt);
-                this.logger.warn(`Request failed [${method} ${url}] - attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}, retrying in ${delay}ms...`);
+                const delay = this.calculateDelay(attempt, retryConfig);
+                this.logger.warn(`Request failed [${method} ${url}] - attempt ${attempt + 1}/${retryConfig.maxRetries + 1}, retrying in ${delay}ms...`);
                 // Wait before retrying
                 await this.sleep(delay);
             }
@@ -125,14 +131,14 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
         this.httpClient = null;
     }
     // Get available languages from API
-    async languages() {
+    async languages(retryConfig = this.retryConfig) {
         if (this.options.enabled === false) {
             return [this.options.defaultLanguage || 'en'];
         }
         try {
             const category = this.options.category || 'web';
             const url = `/translations/language?category=${category}`;
-            const res = await this.executeWithRetry(() => this.getHttpClient().get(url), url, 'GET');
+            const res = await this.executeWithRetry(() => this.getHttpClient().get(url), url, 'GET', retryConfig);
             if (!res.data.success)
                 return [this.options.defaultLanguage || 'en'];
             return res.data.data.languages || [this.options.defaultLanguage || 'en'];
@@ -145,16 +151,23 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
     }
     // Load all translations
     async load() {
+        return this.loadWithConfig(this.bootstrapRetryConfig);
+    }
+    // Load translations with the regular retry policy for background refreshes.
+    async loadWithRetry() {
+        return this.loadWithConfig(this.retryConfig);
+    }
+    async loadWithConfig(retryConfig) {
         if (this.options.enabled === false) {
             const fallbackLanguage = this.options.defaultLanguage || 'en';
             this.logger.debug(`I18nHttpLoader disabled. Using empty data for '${fallbackLanguage}'.`);
             return { [fallbackLanguage]: {} };
         }
         try {
-            const langs = await this.languages();
+            const langs = await this.languages(retryConfig);
             const translations = {};
             for (const lang of langs) {
-                translations[lang] = await this.fetchLanguageTranslations(lang);
+                translations[lang] = await this.fetchLanguageTranslations(lang, retryConfig);
             }
             this.logger.log(`Loaded translations for: ${Object.keys(translations).join(', ')}`);
             return translations;
@@ -171,11 +184,11 @@ let I18nHttpLoader = I18nHttpLoader_1 = class I18nHttpLoader extends nestjs_i18n
         }
     }
     // Fetch translations for a specific language
-    async fetchLanguageTranslations(language) {
+    async fetchLanguageTranslations(language, retryConfig) {
         try {
             const category = this.options.category || 'web';
             const url = `/translations?category=${category}&language=${language}`;
-            const res = await this.executeWithRetry(() => this.getHttpClient().get(url), url, 'GET');
+            const res = await this.executeWithRetry(() => this.getHttpClient().get(url), url, 'GET', retryConfig);
             if (!res.data.success)
                 return {};
             return res.data.data || {};

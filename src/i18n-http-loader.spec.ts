@@ -57,6 +57,21 @@ describe('I18nHttpLoader', () => {
       expect(loader).toBeDefined();
     });
 
+    it('should use a short default request timeout', async () => {
+      loader = new I18nHttpLoader(options);
+      mockAxiosInstance.get.mockResolvedValue({
+        data: { success: true, data: { languages: ['en'] } },
+      } as any);
+
+      await loader.languages();
+
+      expect(mockedAxios.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timeout: 5000,
+        })
+      );
+    });
+
     it('should use custom retry config', () => {
       const customOptions: I18nClientModuleOptions = {
         ...options,
@@ -169,15 +184,41 @@ describe('I18nHttpLoader', () => {
     });
 
     it('should return fallback translations when loading fails', async () => {
-      loader = new I18nHttpLoader({
-        ...options,
-        retryConfig: {
-          maxRetries: 0,
-        },
-      });
       mockAxiosInstance.get.mockRejectedValue(new Error('Network error'));
 
       await expect(loader.load()).resolves.toEqual({ en: {} });
+      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('should use retry policy for explicit refresh loading', async () => {
+      jest.useFakeTimers();
+      loader = new I18nHttpLoader({
+        ...options,
+        retryConfig: {
+          maxRetries: 2,
+          baseDelay: 100,
+          maxDelay: 1000,
+          backoffMultiplier: 2,
+        },
+      });
+
+      mockAxiosInstance.get
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({
+          data: { success: true, data: { languages: ['en'] } },
+        } as any)
+        .mockResolvedValueOnce({
+          data: { success: true, data: { hello: 'Hello' } },
+        } as any);
+
+      const promise = loader.loadWithRetry();
+
+      await jest.advanceTimersByTimeAsync(100);
+      await jest.advanceTimersByTimeAsync(200);
+
+      await expect(promise).resolves.toEqual({ en: { hello: 'Hello' } });
+      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(4);
     });
   });
 

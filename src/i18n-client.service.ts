@@ -177,7 +177,7 @@ export class I18nClientService
       throw new Error('Translation API is not healthy');
     }
 
-    const translations = await this.loader.load();
+    const translations = await this.loader.loadWithRetry();
     const languages = Object.keys(translations);
 
     await this.i18nService.refresh(

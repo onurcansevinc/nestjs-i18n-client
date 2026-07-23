@@ -36,6 +36,7 @@ describe('I18nClientService', () => {
       healthCheck: jest.fn(),
       languages: jest.fn(),
       load: jest.fn(),
+      loadWithRetry: jest.fn(),
     } as any;
 
     mockI18nService = {
@@ -116,7 +117,7 @@ describe('I18nClientService', () => {
   describe('manualRefresh', () => {
     it('should refresh translations successfully', async () => {
       mockLoader.healthCheck.mockResolvedValue(true);
-      mockLoader.load.mockResolvedValue({
+      mockLoader.loadWithRetry.mockResolvedValue({
         en: { hello: 'Hello' },
         tr: { hello: 'Merhaba' },
       });
@@ -144,7 +145,7 @@ describe('I18nClientService', () => {
     it('should throw error when refresh fails', async () => {
       mockLoader.healthCheck.mockResolvedValue(true);
       const networkError = new Error('Network error');
-      mockLoader.load.mockRejectedValue(networkError);
+      mockLoader.loadWithRetry.mockRejectedValue(networkError);
 
       await expect(service.manualRefresh()).rejects.toThrow('Network error');
     });
@@ -198,7 +199,7 @@ describe('I18nClientService', () => {
         moduleWithLoaders.get<I18nClientService>(I18nClientService);
 
       mockLoader.healthCheck.mockResolvedValue(true);
-      mockLoader.load.mockResolvedValue({ en: {} });
+      mockLoader.loadWithRetry.mockResolvedValue({ en: {} });
 
       await serviceWithLoaders.manualRefresh();
 
@@ -236,7 +237,7 @@ describe('I18nClientService', () => {
 
     it('should return true during refresh', async () => {
       mockLoader.healthCheck.mockResolvedValue(true);
-      mockLoader.load.mockImplementation(
+      mockLoader.loadWithRetry.mockImplementation(
         () =>
           new Promise((resolve) => {
             // Delay to allow checking isRefreshing flag

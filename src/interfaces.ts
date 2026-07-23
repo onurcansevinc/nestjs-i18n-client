@@ -26,8 +26,21 @@ export interface I18nClientModuleOptions {
 
   /**
    * Retry configuration for failed requests
+   * Used by manual and scheduled refresh operations.
    */
   retryConfig?: RetryConfig;
+
+  /**
+   * Retry configuration for the initial NestJS i18n loader call.
+   * Defaults to no retries so the host application can boot with fallback
+   * translations when the remote translation API is unavailable.
+   */
+  bootstrapRetryConfig?: RetryConfig;
+
+  /**
+   * HTTP request timeout in milliseconds (default: 5000).
+   */
+  requestTimeout?: number;
 
   /**
    * If true, throw when translations cannot be loaded.
