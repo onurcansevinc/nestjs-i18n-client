@@ -1,16 +1,31 @@
 import { I18nService } from 'nestjs-i18n';
+import { CronJob } from 'cron';
 import { I18nHttpLoader } from './i18n-http-loader';
 import { Test, TestingModule } from '@nestjs/testing';
 import { I18nClientModuleOptions } from './interfaces';
 import { I18nClientService } from './i18n-client.service';
 
+jest.mock('cron', () => ({
+  CronJob: {
+    from: jest.fn(),
+  },
+}));
+
 describe('I18nClientService', () => {
   let service: I18nClientService;
   let mockI18nService: jest.Mocked<I18nService>;
   let mockLoader: jest.Mocked<I18nHttpLoader>;
+  let mockRefreshJob: { isActive: boolean; stop: jest.Mock };
   let options: I18nClientModuleOptions;
 
   beforeEach(async () => {
+    (CronJob.from as jest.Mock).mockClear();
+    mockRefreshJob = {
+      isActive: true,
+      stop: jest.fn().mockResolvedValue(undefined),
+    };
+    (CronJob.from as jest.Mock).mockReturnValue(mockRefreshJob);
+
     options = {
       apiUrl: process.env.I18N_API_URL || 'https://api.example.com',
       apiKey: process.env.I18N_API_KEY || 'test-token',
@@ -49,6 +64,52 @@ describe('I18nClientService', () => {
   describe('constructor', () => {
     it('should be defined', () => {
       expect(service).toBeDefined();
+    });
+  });
+
+  describe('scheduled refresh lifecycle', () => {
+    it('should start an internal cron job on application bootstrap', () => {
+      service.onApplicationBootstrap();
+
+      expect(CronJob.from).toHaveBeenCalledWith({
+        cronTime: '0 */3 * * *',
+        name: 'refreshTranslations',
+        onTick: expect.any(Function),
+        start: true,
+        timeZone: 'UTC',
+        waitForCompletion: true,
+      });
+    });
+
+    it('should not start a cron job when disabled', async () => {
+      const disabledModule: TestingModule = await Test.createTestingModule({
+        providers: [
+          I18nClientService,
+          {
+            provide: 'I18N_CLIENT_OPTIONS',
+            useValue: { ...options, enabled: false },
+          },
+          {
+            provide: I18nService,
+            useValue: mockI18nService,
+          },
+        ],
+      }).compile();
+
+      const disabledService =
+        disabledModule.get<I18nClientService>(I18nClientService);
+
+      disabledService.onApplicationBootstrap();
+
+      expect(CronJob.from).not.toHaveBeenCalled();
+    });
+
+    it('should stop the internal cron job on module destroy', async () => {
+      service.onApplicationBootstrap();
+
+      await service.onModuleDestroy();
+
+      expect(mockRefreshJob.stop).toHaveBeenCalled();
     });
   });
 

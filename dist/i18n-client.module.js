@@ -8,7 +8,6 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var I18nClientModule_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.I18nClientModule = void 0;
-const schedule_1 = require("@nestjs/schedule");
 const i18n_http_loader_1 = require("./i18n-http-loader");
 const i18n_client_service_1 = require("./i18n-client.service");
 const common_1 = require("@nestjs/common");
@@ -27,7 +26,6 @@ let I18nClientModule = I18nClientModule_1 = class I18nClientModule {
         return {
             module: I18nClientModule_1,
             imports: [
-                schedule_1.ScheduleModule.forRoot(),
                 nestjs_i18n_1.I18nModule.forRoot({
                     fallbackLanguage: options.defaultLanguage || 'en',
                     loader: i18n_http_loader_1.I18nHttpLoader,
@@ -56,7 +54,6 @@ let I18nClientModule = I18nClientModule_1 = class I18nClientModule {
         return {
             module: I18nClientModule_1,
             imports: [
-                schedule_1.ScheduleModule.forRoot(),
                 ...(options.imports || []),
                 nestjs_i18n_1.I18nModule.forRootAsync({
                     useFactory: async (...args) => {

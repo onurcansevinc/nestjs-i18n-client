@@ -47,7 +47,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 var I18nClientService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.I18nClientService = void 0;
-const schedule_1 = require("@nestjs/schedule");
+const cron_1 = require("cron");
 const nestjs_i18n_1 = require("nestjs-i18n");
 const type_generator_1 = require("./type-generator");
 const common_1 = require("@nestjs/common");
@@ -60,6 +60,7 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
     logger = new common_1.Logger(I18nClientService_1.name);
     loader;
     isRefreshing = false;
+    refreshJob;
     constructor(options, i18nService) {
         this.options = options;
         this.i18nService = i18nService;
@@ -111,7 +112,28 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
             this.logger.warn(`Failed to generate TypeScript types: ${error.message}. Types will not be available for autocomplete.`);
         });
     }
-    // Scheduled job to refresh translations every 3 hours
+    onApplicationBootstrap() {
+        if (this.options.enabled === false) {
+            this.logger.debug('Scheduled translation refresh disabled by configuration.');
+            return;
+        }
+        if (this.refreshJob?.isActive) {
+            return;
+        }
+        this.refreshJob = cron_1.CronJob.from({
+            cronTime: '0 */3 * * *',
+            name: 'refreshTranslations',
+            onTick: () => this.refreshTranslations(),
+            start: true,
+            timeZone: 'UTC',
+            waitForCompletion: true,
+        });
+    }
+    async onModuleDestroy() {
+        await this.refreshJob?.stop();
+        this.refreshJob = undefined;
+    }
+    // Refresh translations. Called by the internal cron job or manually.
     async refreshTranslations() {
         if (this.options.enabled === false) {
             this.logger.debug('Translation refresh disabled by configuration.');
@@ -189,15 +211,6 @@ let I18nClientService = I18nClientService_1 = class I18nClientService {
     }
 };
 exports.I18nClientService = I18nClientService;
-__decorate([
-    (0, schedule_1.Cron)('0 */3 * * *', {
-        name: 'refreshTranslations',
-        timeZone: 'UTC',
-    }),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], I18nClientService.prototype, "refreshTranslations", null);
 exports.I18nClientService = I18nClientService = I18nClientService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)('I18N_CLIENT_OPTIONS')),

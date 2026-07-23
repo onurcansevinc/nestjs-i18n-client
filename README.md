@@ -6,7 +6,7 @@ A NestJS module built on top of `nestjs-i18n` that adds dynamic translation load
 
 - 🏗️ **Built on nestjs-i18n**: Extends the popular `nestjs-i18n` library with additional capabilities
 - 🔄 **Dynamic Translation Loading**: Fetch translations from external APIs
-- ⏰ **Scheduled Updates**: Automatic refresh every 3 hours using `nestjs-schedule`
+- ⏰ **Scheduled Updates**: Automatic refresh every 3 hours using an internal cron job
 - 🔐 **API Key Authentication**: Secure API communication
 - 🔁 **Retry & Backoff**: Robust error handling with exponential backoff
 - 🏥 **Health Checks**: API health monitoring
@@ -25,14 +25,13 @@ npm install nestjs-i18n-client
 This package requires the following peer dependencies to be installed in your project:
 
 ```bash
-npm install @nestjs/common @nestjs/core @nestjs/schedule nestjs-i18n rxjs reflect-metadata class-validator class-transformer
+npm install @nestjs/common @nestjs/core nestjs-i18n rxjs reflect-metadata class-validator class-transformer
 ```
 
 **Compatible Versions**:
 
 - `@nestjs/common`: ^10.0.0 || ^11.0.0
 - `@nestjs/core`: ^10.0.0 || ^11.0.0
-- `@nestjs/schedule`: ^4.0.0 || ^5.0.0 || ^6.0.0
 - `nestjs-i18n`: >=10.6.0 <11.0.0
 - `rxjs`: ^7.0.0
 - `reflect-metadata`: ^0.1.13 || ^0.2.0
@@ -43,7 +42,8 @@ npm install @nestjs/common @nestjs/core @nestjs/schedule nestjs-i18n rxjs reflec
 
 - Make sure to install `reflect-metadata` as it's required for NestJS decorators to work properly
 - The package uses CommonJS format for maximum compatibility with NestJS projects
-- All runtime dependencies are properly declared as peerDependencies to avoid version conflicts
+- NestJS runtime dependencies are declared as peerDependencies to avoid version conflicts
+- Scheduled refresh is managed internally and does not require `ScheduleModule.forRoot()`
 - Peer dependency ranges are capped to tested major/minor lines instead of open-ended `>=` ranges
 - The repo keeps an exact dev dependency for `nestjs-i18n` and a compatibility test for supported 10.x lines
 
@@ -300,7 +300,7 @@ interface RetryConfig {
 
 ## Scheduled Updates
 
-The module automatically refreshes translations every 3 hours using a cron job (`0 */3 * * *`). You can also trigger manual refreshes:
+The module automatically refreshes translations every 3 hours using an internal cron job (`0 */3 * * *`, UTC). It does not register anything through `@nestjs/schedule`, so applications can use their own `ScheduleModule.forRoot()` independently. You can also trigger manual refreshes:
 
 ```typescript
 // Manual refresh

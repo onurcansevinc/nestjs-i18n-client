@@ -1,18 +1,28 @@
-import { Cron } from '@nestjs/schedule';
+import { CronJob } from 'cron';
 import { I18nService } from 'nestjs-i18n';
 import { I18nHttpLoader } from './i18n-http-loader';
 import { I18nClientModuleOptions } from './interfaces';
 import { generateTypesFromAPI } from './type-generator';
-import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  OnApplicationBootstrap,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 
 // Service for managing i18n translations with external API integration
 @Injectable()
-export class I18nClientService implements OnModuleInit {
+export class I18nClientService
+  implements OnModuleInit, OnApplicationBootstrap, OnModuleDestroy
+{
   private readonly logger = new Logger(I18nClientService.name);
   private readonly loader: I18nHttpLoader;
   private isRefreshing = false;
+  private refreshJob?: CronJob;
 
   constructor(
     @Inject('I18N_CLIENT_OPTIONS')
@@ -82,11 +92,32 @@ export class I18nClientService implements OnModuleInit {
     });
   }
 
-  // Scheduled job to refresh translations every 3 hours
-  @Cron('0 */3 * * *', {
-    name: 'refreshTranslations',
-    timeZone: 'UTC',
-  })
+  onApplicationBootstrap(): void {
+    if (this.options.enabled === false) {
+      this.logger.debug('Scheduled translation refresh disabled by configuration.');
+      return;
+    }
+
+    if (this.refreshJob?.isActive) {
+      return;
+    }
+
+    this.refreshJob = CronJob.from({
+      cronTime: '0 */3 * * *',
+      name: 'refreshTranslations',
+      onTick: () => this.refreshTranslations(),
+      start: true,
+      timeZone: 'UTC',
+      waitForCompletion: true,
+    });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.refreshJob?.stop();
+    this.refreshJob = undefined;
+  }
+
+  // Refresh translations. Called by the internal cron job or manually.
   async refreshTranslations(): Promise<void> {
     if (this.options.enabled === false) {
       this.logger.debug('Translation refresh disabled by configuration.');

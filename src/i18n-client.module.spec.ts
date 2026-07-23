@@ -11,6 +11,8 @@ describe('I18nClientModule', () => {
         apiUrl: process.env.I18N_API_URL || 'https://api.example.com',
         apiKey: process.env.I18N_API_KEY || 'test-token',
         defaultLanguage: process.env.I18N_DEFAULT_LANGUAGE || 'en',
+        enabled: false,
+        disableTypeGeneration: true,
       };
 
       const module: TestingModule = await Test.createTestingModule({
@@ -26,6 +28,8 @@ describe('I18nClientModule', () => {
       const options: I18nClientModuleOptions = {
         apiUrl: process.env.I18N_API_URL || 'https://api.example.com',
         apiKey: process.env.I18N_API_KEY || 'test-token',
+        enabled: false,
+        disableTypeGeneration: true,
       };
 
       const module: TestingModule = await Test.createTestingModule({
@@ -60,6 +64,8 @@ describe('I18nClientModule', () => {
                 configService.get('I18N_DEFAULT_LANGUAGE') ||
                 process.env.I18N_DEFAULT_LANGUAGE ||
                 'en',
+              enabled: false,
+              disableTypeGeneration: true,
             }),
             inject: [ConfigService],
           }),
@@ -75,6 +81,8 @@ describe('I18nClientModule', () => {
         apiUrl: process.env.I18N_API_URL || 'https://api.example.com',
         apiKey: process.env.I18N_API_KEY || 'test-token',
         defaultLanguage: process.env.I18N_DEFAULT_LANGUAGE || 'tr',
+        enabled: false,
+        disableTypeGeneration: true,
       };
 
       const module: TestingModule = await Test.createTestingModule({

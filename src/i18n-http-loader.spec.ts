@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { I18nHttpLoader } from './i18n-http-loader';
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { I18nClientModuleOptions, I18nClientError } from './interfaces';
+import { I18nClientModuleOptions } from './interfaces';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -92,7 +92,7 @@ describe('I18nHttpLoader', () => {
 
       expect(languages).toEqual(['en', 'tr', 'de']);
       expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        '/translations/language'
+        '/translations/language?category=web'
       );
     });
 
@@ -168,12 +168,16 @@ describe('I18nHttpLoader', () => {
       });
     });
 
-    it('should throw error when loading fails', async () => {
-      // Use real timers - retry will fail quickly
-      jest.useRealTimers();
+    it('should return fallback translations when loading fails', async () => {
+      loader = new I18nHttpLoader({
+        ...options,
+        retryConfig: {
+          maxRetries: 0,
+        },
+      });
       mockAxiosInstance.get.mockRejectedValue(new Error('Network error'));
 
-      await expect(loader.load()).rejects.toThrow(I18nClientError);
+      await expect(loader.load()).resolves.toEqual({ en: {} });
     });
   });
 

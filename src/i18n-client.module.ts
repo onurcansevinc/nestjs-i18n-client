@@ -1,4 +1,3 @@
-import { ScheduleModule } from '@nestjs/schedule';
 import { I18nHttpLoader } from './i18n-http-loader';
 import { I18nClientService } from './i18n-client.service';
 import { DynamicModule, Module, Provider } from '@nestjs/common';
@@ -28,7 +27,6 @@ export class I18nClientModule {
     return {
       module: I18nClientModule,
       imports: [
-        ScheduleModule.forRoot(),
         I18nModule.forRoot({
           fallbackLanguage: options.defaultLanguage || 'en',
           loader: I18nHttpLoader,
@@ -59,7 +57,6 @@ export class I18nClientModule {
     return {
       module: I18nClientModule,
       imports: [
-        ScheduleModule.forRoot(),
         ...(options.imports || []),
         I18nModule.forRootAsync({
           useFactory: async (...args: any[]) => {
