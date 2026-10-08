@@ -30,8 +30,8 @@ npm install @nestjs/common @nestjs/core nestjs-i18n rxjs reflect-metadata class-
 
 **Compatible Versions**:
 
-- `@nestjs/common`: ^10.0.0 || ^11.0.0
-- `@nestjs/core`: ^10.0.0 || ^11.0.0
+- `@nestjs/common`: ^10.0.0 || ^11.0.0 || ^12.0.0
+- `@nestjs/core`: ^10.0.0 || ^11.0.0 || ^12.0.0
 - `nestjs-i18n`: >=10.6.0 <11.0.0
 - `rxjs`: ^7.0.0
 - `reflect-metadata`: ^0.1.13 || ^0.2.0

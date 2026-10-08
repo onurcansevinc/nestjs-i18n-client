@@ -13,6 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [22]
+        nestjs-version: ['11', '12']
         nestjs-i18n-version: ['10.6.0', '10.8.0']
 
     steps:
@@ -27,10 +28,11 @@ jobs:
         run: npm ci
 
       - name: Install matrix nestjs-i18n version
-        run: npm install --no-save nestjs-i18n@${{ matrix.nestjs-i18n-version }}
+        run: npm install --no-save @nestjs/common@${{ matrix.nestjs-version }} @nestjs/core@${{ matrix.nestjs-version }} @nestjs/testing@${{ matrix.nestjs-version }} @nestjs/config@${{ matrix.nestjs-version }} nestjs-i18n@${{ matrix.nestjs-i18n-version }}
 
       - name: Build
         run: npm run build
 
       - name: Run compatibility regression test
+        if: matrix.nestjs-version == '11'
         run: npm run test:compat:i18n
